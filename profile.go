@@ -30,16 +30,25 @@ type Config struct {
 	// files are written. It defaults to the output of
 	// ioutil.TempDir.
 	ProfilePath string
+
+	// HandleInterrupt controls whether the profiling package should
+	// hook SIGINT to write profiles cleanly.
+	// It defaults to true, programs with more sophisticated signal
+	// handling should set this to false and ensure the Stop() function
+	// returned from Start() is called during shutdown.
+	HandleInterrupt bool
 }
 
 var CPUProfile = &Config{
-	Verbose:    true,
-	CPUProfile: true,
+	Verbose:         true,
+	CPUProfile:      true,
+	HandleInterrupt: true,
 }
 
 var MemProfile = &Config{
-	Verbose:    true,
-	MemProfile: true,
+	Verbose:         true,
+	MemProfile:      true,
+	HandleInterrupt: true,
 }
 
 func (c *Config) getVerbose() bool {
@@ -70,14 +79,20 @@ func (c *Config) getProfilePath() string {
 	return c.ProfilePath
 }
 
-// P represents a set of running profiles.
-type P struct {
+func (c *Config) getHandleInterrupt() bool {
+	if c == nil {
+		return true
+	}
+	return c.HandleInterrupt
+}
+
+type profile struct {
 	path string
 	*Config
 	closers []func()
 }
 
-func (p *P) Stop() {
+func (p *profile) Stop() {
 	for _, c := range p.closers {
 		c()
 	}
@@ -88,7 +103,9 @@ func (p *P) Stop() {
 // to cleanly stop profiling.
 // Passing a nil *Config is the same as passing a *Config with
 // defaults chosen.
-func Start(cfg *Config) *P {
+func Start(cfg *Config) interface {
+	Stop()
+} {
 	path := cfg.getProfilePath()
 	var err error
 	if path == "" {
@@ -99,52 +116,54 @@ func Start(cfg *Config) *P {
 	if err != nil {
 		log.Fatalf("profile: could not create initial output directory: %v", err)
 	}
-	p := &P{
+	prof := &profile{
 		path:   path,
 		Config: cfg,
 	}
 
-	if p.getCPUProfile() {
-		fn := filepath.Join(p.path, "cpu.pprof")
+	if prof.getCPUProfile() {
+		fn := filepath.Join(prof.path, "cpu.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatal("profile: could not create cpu profile file %q: %v", fn, err)
 		}
-		if p.getVerbose() {
+		if prof.getVerbose() {
 			log.Printf("profile: cpu profiling enabled, %s", fn)
 		}
 		pprof.StartCPUProfile(f)
-		p.closers = append(p.closers, func() {
+		prof.closers = append(prof.closers, func() {
 			pprof.StopCPUProfile()
 			f.Close()
 		})
 	}
 
-	if p.getMemProfile() {
-		fn := filepath.Join(p.path, "mem.pprof")
+	if prof.getMemProfile() {
+		fn := filepath.Join(prof.path, "mem.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatal("profile: could not create memory profile file %q: %v", fn, err)
 		}
-		if p.getVerbose() {
+		if prof.getVerbose() {
 			log.Printf("profile: memory profiling enabled, %s", fn)
 		}
-		p.closers = append(p.closers, func() {
+		prof.closers = append(prof.closers, func() {
 			pprof.Lookup("heap").WriteTo(f, 0)
 			f.Close()
 		})
 	}
 
-	go func() {
-		c := make(chan os.Signal, 1)
-		signal.Notify(c, os.Interrupt)
-		<-c
+	if prof.getHandleInterrupt() {
+		go func() {
+			c := make(chan os.Signal, 1)
+			signal.Notify(c, os.Interrupt)
+			<-c
 
-		log.Println("profile: caught interrupt, stopping profiles")
-		p.Stop()
+			log.Println("profile: caught interrupt, stopping profiles")
+			prof.Stop()
 
-		os.Exit(0)
-	}()
+			os.Exit(0)
+		}()
+	}
 
-	return p
+	return prof
 }
