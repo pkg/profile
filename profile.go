@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"runtime/pprof"
 )
 
@@ -26,6 +27,11 @@ type Config struct {
 	// It defaults to false.
 	MemProfile bool
 
+	// BlockProfile controls if block (contention) profiling will
+	// be enabled.
+	// It defaults to false.
+	BlockProfile bool
+
 	// ProfilePath controls the base path where various profiling
 	// files are written. It defaults to the output of
 	// ioutil.TempDir.
@@ -39,17 +45,25 @@ type Config struct {
 	HandleInterrupt bool
 }
 
-var CPUProfile = &Config{
-	Verbose:         true,
-	CPUProfile:      true,
-	HandleInterrupt: true,
-}
+var (
+	CPUProfile = &Config{
+		Verbose:         true,
+		CPUProfile:      true,
+		HandleInterrupt: true,
+	}
 
-var MemProfile = &Config{
-	Verbose:         true,
-	MemProfile:      true,
-	HandleInterrupt: true,
-}
+	MemProfile = &Config{
+		Verbose:         true,
+		MemProfile:      true,
+		HandleInterrupt: true,
+	}
+
+	BlockProfile = &Config{
+		Verbose:         true,
+		BlockProfile:    true,
+		HandleInterrupt: true,
+	}
+)
 
 func (c *Config) getVerbose() bool {
 	if c == nil {
@@ -70,6 +84,17 @@ func (c *Config) getMemProfile() bool {
 		return false
 	}
 	return c.MemProfile
+}
+
+func (c *Config) getMemProfileRate() int {
+	return 4096
+}
+
+func (c *Config) getBlockProfile() bool {
+	if c == nil {
+		return false
+	}
+	return c.BlockProfile
 }
 
 func (c *Config) getProfilePath() string {
@@ -125,7 +150,7 @@ func Start(cfg *Config) interface {
 		fn := filepath.Join(prof.path, "cpu.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
-			log.Fatal("profile: could not create cpu profile file %q: %v", fn, err)
+			log.Fatal("profile: could not create cpu profile %q: %v", fn, err)
 		}
 		if prof.getVerbose() {
 			log.Printf("profile: cpu profiling enabled, %s", fn)
@@ -141,14 +166,34 @@ func Start(cfg *Config) interface {
 		fn := filepath.Join(prof.path, "mem.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
-			log.Fatal("profile: could not create memory profile file %q: %v", fn, err)
+			log.Fatal("profile: could not create memory profile %q: %v", fn, err)
 		}
+		old := runtime.MemProfileRate
+		runtime.MemProfileRate = prof.getMemProfileRate()
 		if prof.getVerbose() {
 			log.Printf("profile: memory profiling enabled, %s", fn)
 		}
 		prof.closers = append(prof.closers, func() {
 			pprof.Lookup("heap").WriteTo(f, 0)
 			f.Close()
+			runtime.MemProfileRate = old
+		})
+	}
+
+	if prof.getBlockProfile() {
+		fn := filepath.Join(prof.path, "block.pprof")
+		f, err := os.Create(fn)
+		if err != nil {
+			log.Fatal("profile: could not create block profile %q: %v", fn, err)
+		}
+		runtime.SetBlockProfileRate(1)
+		if prof.getVerbose() {
+			log.Printf("profile: block profiling enabled, %s", fn)
+		}
+		prof.closers = append(prof.closers, func() {
+			pprof.Lookup("block").WriteTo(f, 0)
+			f.Close()
+			runtime.SetBlockProfileRate(0)
 		})
 	}
 
