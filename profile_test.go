@@ -5,9 +5,7 @@ import (
 )
 
 func ExampleStart() {
-	// start a simple CPU profile
-	prof := profile.Start(profile.CPUProfile)
-	// always call Stop to cleanly flush
-	// profiling data to disk.
-	defer prof.Stop()
+	// start a simple CPU profile and register
+	// a defer to Stop (flush) the profiling data.
+	defer profile.Start(profile.CPUProfile).Stop()
 }
