@@ -23,7 +23,7 @@ Enabling profiling in your application is as simple as one line at the top of yo
 options
 -------
 
-Control of what to profile is controlled by the profile.Config value passed to profile.Start. A nil
+What to profile is controlled by the \*profile.Config value passed to profile.Start. A nil
 Config is the same as choosing all the defaults. By default no profiles are enabled.
 
 Several convenience package level values are provided for cpu, memory, and block (contention) profiling. 
