@@ -1,4 +1,4 @@
-// Package profile provides a simple way to manage runtime/pprof 
+// Package profile provides a simple way to manage runtime/pprof
 // profiling of your Go application.
 package profile
 
@@ -18,9 +18,13 @@ type Config struct {
 	// only error messages will be output.
 	Verbose bool
 
-	// CPUProfile controls if CPU profiling will be enabled.
-	// It defaults to false
+	// CPUProfile controls if cpu profiling will be enabled.
+	// It defaults to false.
 	CPUProfile bool
+
+	// MemProfile controls if memory profiling will be enabled.
+	// It defaults to false.
+	MemProfile bool
 
 	// ProfilePath controls the base path where various profiling
 	// files are written. It defaults to the output of
@@ -31,6 +35,11 @@ type Config struct {
 var CPUProfile = &Config{
 	Verbose:    true,
 	CPUProfile: true,
+}
+
+var MemProfile = &Config{
+	Verbose:    true,
+	MemProfile: true,
 }
 
 func (c *Config) getVerbose() bool {
@@ -47,6 +56,13 @@ func (c *Config) getCPUProfile() bool {
 	return c.CPUProfile
 }
 
+func (c *Config) getMemProfile() bool {
+	if c == nil {
+		return false
+	}
+	return c.MemProfile
+}
+
 func (c *Config) getProfilePath() string {
 	if c == nil {
 		return ""
@@ -54,27 +70,25 @@ func (c *Config) getProfilePath() string {
 	return c.ProfilePath
 }
 
-// Stopper represents a mechanism to finish a profiling run.
-type Stopper interface {
-	Stop()
-}
-
-type profile struct {
+// P represents a set of running profiles.
+type P struct {
 	path string
 	*Config
 	closers []func()
 }
 
-func (p *profile) Stop() {
+func (p *P) Stop() {
 	for _, c := range p.closers {
 		c()
 	}
 }
 
 // Start starts a new profiling session configured using *Config.
+// The caller should call the Stop method on the value returned
+// to cleanly stop profiling.
 // Passing a nil *Config is the same as passing a *Config with
 // defaults chosen.
-func Start(cfg *Config) Stopper {
+func Start(cfg *Config) *P {
 	path := cfg.getProfilePath()
 	var err error
 	if path == "" {
@@ -85,22 +99,40 @@ func Start(cfg *Config) Stopper {
 	if err != nil {
 		log.Fatalf("profile: could not create initial output directory: %v", err)
 	}
-	prof := &profile{
+	p := &P{
 		path:   path,
 		Config: cfg,
 	}
 
-	if prof.getCPUProfile() {
-		fn := filepath.Join(prof.path, "cpu.pprof")
+	if p.getCPUProfile() {
+		fn := filepath.Join(p.path, "cpu.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatal("profile: could not create cpu profile file %q: %v", fn, err)
 		}
-		if prof.getVerbose() {
-			log.Printf("profile: cpu profiling enabled, %q", fn)
+		if p.getVerbose() {
+			log.Printf("profile: cpu profiling enabled, %s", fn)
 		}
 		pprof.StartCPUProfile(f)
-		prof.closers = append(prof.closers, pprof.StopCPUProfile)
+		p.closers = append(p.closers, func() {
+			pprof.StopCPUProfile()
+			f.Close()
+		})
+	}
+
+	if p.getMemProfile() {
+		fn := filepath.Join(p.path, "mem.pprof")
+		f, err := os.Create(fn)
+		if err != nil {
+			log.Fatal("profile: could not create memory profile file %q: %v", fn, err)
+		}
+		if p.getVerbose() {
+			log.Printf("profile: memory profiling enabled, %s", fn)
+		}
+		p.closers = append(p.closers, func() {
+			pprof.Lookup("heap").WriteTo(f, 0)
+			f.Close()
+		})
 	}
 
 	go func() {
@@ -109,10 +141,10 @@ func Start(cfg *Config) Stopper {
 		<-c
 
 		log.Println("profile: caught interrupt, stopping profiles")
-		prof.Stop()
+		p.Stop()
 
 		os.Exit(0)
 	}()
 
-	return prof
+	return p
 }
