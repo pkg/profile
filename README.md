@@ -35,7 +35,7 @@ Config is the same as choosing all the defaults. By default no profiles are enab
               NoShutdownHook: true, // do not hook SIGINT
          }
          // p.Stop() must be called before the program exits to  
-         // ensure profiling information is correct written to disk.
+         // ensure profiling information is written to disk.
          p := profile.Start(&cfg)
          ...
     }
