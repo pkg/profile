@@ -14,10 +14,8 @@ import (
 
 // Config controls the operation of the profile package.
 type Config struct {
-	// Verbose controls the output of informational messages
-	// during profiling. It defaults to true. If set to false
-	// only error messages will be output.
-	Verbose bool
+	// Quiet suppresses informational messages during profiling.
+	Quiet bool
 
 	// CPUProfile controls if cpu profiling will be enabled.
 	// It defaults to false.
@@ -33,83 +31,37 @@ type Config struct {
 	BlockProfile bool
 
 	// ProfilePath controls the base path where various profiling
-	// files are written. It defaults to the output of
-	// ioutil.TempDir.
+	// files are written. If blank, the base path will be generated
+	// by ioutil.TempDir.
 	ProfilePath string
 
-	// HandleInterrupt controls whether the profiling package should
+	// NoShutdownHook controls whether the profiling package should
 	// hook SIGINT to write profiles cleanly.
-	// It defaults to true, programs with more sophisticated signal
-	// handling should set this to false and ensure the Stop() function
-	// returned from Start() is called during shutdown.
-	HandleInterrupt bool
+	// Programs with more sophisticated signal handling should set
+	// this to true and ensure the Stop() function returned from Start()
+	// is called during shutdown.
+	NoShutdownHook bool
 }
+
+var zeroConfig Config
+
+const memProfileRate = 4096
+
+func defaultConfig() *Config { return &zeroConfig }
 
 var (
 	CPUProfile = &Config{
-		Verbose:         true,
-		CPUProfile:      true,
-		HandleInterrupt: true,
+		CPUProfile: true,
 	}
 
 	MemProfile = &Config{
-		Verbose:         true,
-		MemProfile:      true,
-		HandleInterrupt: true,
+		MemProfile: true,
 	}
 
 	BlockProfile = &Config{
-		Verbose:         true,
-		BlockProfile:    true,
-		HandleInterrupt: true,
+		BlockProfile: true,
 	}
 )
-
-func (c *Config) getVerbose() bool {
-	if c == nil {
-		return true
-	}
-	return c.Verbose
-}
-
-func (c *Config) getCPUProfile() bool {
-	if c == nil {
-		return false
-	}
-	return c.CPUProfile
-}
-
-func (c *Config) getMemProfile() bool {
-	if c == nil {
-		return false
-	}
-	return c.MemProfile
-}
-
-func (c *Config) getMemProfileRate() int {
-	return 4096
-}
-
-func (c *Config) getBlockProfile() bool {
-	if c == nil {
-		return false
-	}
-	return c.BlockProfile
-}
-
-func (c *Config) getProfilePath() string {
-	if c == nil {
-		return ""
-	}
-	return c.ProfilePath
-}
-
-func (c *Config) getHandleInterrupt() bool {
-	if c == nil {
-		return true
-	}
-	return c.HandleInterrupt
-}
 
 type profile struct {
 	path string
@@ -131,7 +83,10 @@ func (p *profile) Stop() {
 func Start(cfg *Config) interface {
 	Stop()
 } {
-	path := cfg.getProfilePath()
+	if cfg == nil {
+		cfg = defaultConfig()
+	}
+	path := cfg.ProfilePath
 	var err error
 	if path == "" {
 		path, err = ioutil.TempDir("", "profile")
@@ -146,13 +101,13 @@ func Start(cfg *Config) interface {
 		Config: cfg,
 	}
 
-	if prof.getCPUProfile() {
+	if prof.CPUProfile {
 		fn := filepath.Join(prof.path, "cpu.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatal("profile: could not create cpu profile %q: %v", fn, err)
 		}
-		if prof.getVerbose() {
+		if !prof.Quiet {
 			log.Printf("profile: cpu profiling enabled, %s", fn)
 		}
 		pprof.StartCPUProfile(f)
@@ -162,15 +117,15 @@ func Start(cfg *Config) interface {
 		})
 	}
 
-	if prof.getMemProfile() {
+	if prof.MemProfile {
 		fn := filepath.Join(prof.path, "mem.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatal("profile: could not create memory profile %q: %v", fn, err)
 		}
 		old := runtime.MemProfileRate
-		runtime.MemProfileRate = prof.getMemProfileRate()
-		if prof.getVerbose() {
+		runtime.MemProfileRate = memProfileRate
+		if !prof.Quiet {
 			log.Printf("profile: memory profiling enabled, %s", fn)
 		}
 		prof.closers = append(prof.closers, func() {
@@ -180,14 +135,14 @@ func Start(cfg *Config) interface {
 		})
 	}
 
-	if prof.getBlockProfile() {
+	if prof.BlockProfile {
 		fn := filepath.Join(prof.path, "block.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatal("profile: could not create block profile %q: %v", fn, err)
 		}
 		runtime.SetBlockProfileRate(1)
-		if prof.getVerbose() {
+		if !prof.Quiet {
 			log.Printf("profile: block profiling enabled, %s", fn)
 		}
 		prof.closers = append(prof.closers, func() {
@@ -197,7 +152,7 @@ func Start(cfg *Config) interface {
 		})
 	}
 
-	if prof.getHandleInterrupt() {
+	if !prof.NoShutdownHook {
 		go func() {
 			c := make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt)
