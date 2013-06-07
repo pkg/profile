@@ -30,6 +30,9 @@ Config is the same as choosing all the defaults. By default no profiles are enab
 
     func main() {
          cfg := profile.Config {
+	      // You probably don't want to do this
+              // profiling multiple axis at once will not
+	      // lead to clean results.              
               CPUProfile: true,
               MemProfile: true,
               NoShutdownHook: true, // do not hook SIGINT
