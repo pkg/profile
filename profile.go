@@ -105,7 +105,7 @@ func Start(cfg *Config) interface {
 		fn := filepath.Join(prof.path, "cpu.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
-			log.Fatal("profile: could not create cpu profile %q: %v", fn, err)
+			log.Fatalf("profile: could not create cpu profile %q: %v", fn, err)
 		}
 		if !prof.Quiet {
 			log.Printf("profile: cpu profiling enabled, %s", fn)
@@ -121,7 +121,7 @@ func Start(cfg *Config) interface {
 		fn := filepath.Join(prof.path, "mem.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
-			log.Fatal("profile: could not create memory profile %q: %v", fn, err)
+			log.Fatalf("profile: could not create memory profile %q: %v", fn, err)
 		}
 		old := runtime.MemProfileRate
 		runtime.MemProfileRate = memProfileRate
@@ -139,7 +139,7 @@ func Start(cfg *Config) interface {
 		fn := filepath.Join(prof.path, "block.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
-			log.Fatal("profile: could not create block profile %q: %v", fn, err)
+			log.Fatalf("profile: could not create block profile %q: %v", fn, err)
 		}
 		runtime.SetBlockProfileRate(1)
 		if !prof.Quiet {
