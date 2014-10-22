@@ -34,7 +34,7 @@ import "github.com/pkg/profile"
 func main() {
     // p.Stop() must be called before the program exits to
     // ensure profiling information is written to disk.
-    p := profile.Start(profile.MemProfile, ProfilePath("."), NoShutdownHook)
+    p := profile.Start(profile.MemProfile, profile.ProfilePath("."), profile.NoShutdownHook)
     ...
 }
 ```
