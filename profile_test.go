@@ -15,7 +15,7 @@ func ExampleStart() {
 func ExampleCPUProfile() {
 	// CPU profiling is the default profiling mode, but you can specify it
 	// explicitly for completeness.
-	defer profile.Start(profile.MemProfile).Stop()
+	defer profile.Start(profile.CPUProfile).Stop()
 }
 
 func ExampleMemProfile() {
