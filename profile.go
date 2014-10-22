@@ -55,7 +55,7 @@ func (c *config) NoProfiles() {
 	c.BlockProfile = false
 }
 
-// CPUProfile controls if cpu profiling will be enabled. It disables an previous profiling settings.
+// CPUProfile controls if cpu profiling will be enabled. It disables any previous profiling settings.
 func CPUProfile(c *config) {
 	c.NoProfiles()
 	c.CPUProfile = true
