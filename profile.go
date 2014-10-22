@@ -12,17 +12,14 @@ import (
 	"runtime/pprof"
 )
 
-// Config controls the operation of the profile package.
-type Config struct {
+type config struct {
 	// Quiet suppresses informational messages during profiling.
 	Quiet bool
 
 	// CPUProfile controls if cpu profiling will be enabled.
-	// It defaults to false.
 	CPUProfile bool
 
 	// MemProfile controls if memory profiling will be enabled.
-	// It defaults to false.
 	MemProfile bool
 
 	// BlockProfile controls if block (contention) profiling will
@@ -37,35 +34,57 @@ type Config struct {
 
 	// NoShutdownHook controls whether the profiling package should
 	// hook SIGINT to write profiles cleanly.
-	// Programs with more sophisticated signal handling should set
-	// this to true and ensure the Stop() function returned from Start()
-	// is called during shutdown.
 	NoShutdownHook bool
 }
 
-var zeroConfig Config
+// NoShutdownHook controls whether the profiling package should
+// hook SIGINT to write profiles cleanly.
+// Programs with more sophisticated signal handling should set
+// this to true and ensure the Stop() function returned from Start()
+// is called during shutdown.
+func NoShutdownHook(c *config) { c.NoShutdownHook = true }
+
+// Quiet suppresses informational messages during profiling.
+func Quiet(c *config) { c.Quiet = true }
 
 const memProfileRate = 4096
 
-func defaultConfig() *Config { return &zeroConfig }
+func (c *config) NoProfiles() {
+	c.CPUProfile = false
+	c.MemProfile = false
+	c.BlockProfile = false
+}
 
-var (
-	CPUProfile = &Config{
-		CPUProfile: true,
-	}
+// CPUProfile controls if cpu profiling will be enabled. It disables an previous profiling settings.
+func CPUProfile(c *config) {
+	c.NoProfiles()
+	c.CPUProfile = true
+}
 
-	MemProfile = &Config{
-		MemProfile: true,
-	}
+// MemProfile controls if memory profiling will be enabled. It disables any previous profiling settings.
+func MemProfile(c *config) {
+	c.NoProfiles()
+	c.MemProfile = true
+}
 
-	BlockProfile = &Config{
-		BlockProfile: true,
+// BlockProfile controls if block (contention) profiling will be enabled. It disables any previous profiling settings.
+func BlockProfile(c *config) {
+	c.NoProfiles()
+	c.BlockProfile = true
+}
+
+// ProfilePath controls the base path where various profiling
+// files are written. If blank, the base path will be generated
+// by ioutil.TempDir.
+func ProfilePath(path string) func(*config) {
+	return func(c *config) {
+		c.ProfilePath = path
 	}
-)
+}
 
 type profile struct {
 	path string
-	*Config
+	*config
 	closers []func()
 }
 
@@ -75,17 +94,22 @@ func (p *profile) Stop() {
 	}
 }
 
-// Start starts a new profiling session configured using *Config.
+func defaultOptions() []func(*config) { return []func(*config){CPUProfile} }
+
+// Start starts a new profiling session cured using *config.
 // The caller should call the Stop method on the value returned
 // to cleanly stop profiling.
-// Passing a nil *Config is the same as passing a *Config with
+// Passing a nil *config is the same as passing a *config with
 // defaults chosen.
-func Start(cfg *Config) interface {
+func Start(options ...func(*config)) interface {
 	Stop()
 } {
-	if cfg == nil {
-		cfg = defaultConfig()
+	options = append(defaultOptions(), options...)
+	var cfg config
+	for _, option := range options {
+		option(&cfg)
 	}
+
 	path := cfg.ProfilePath
 	var err error
 	if path == "" {
@@ -98,7 +122,7 @@ func Start(cfg *Config) interface {
 	}
 	prof := &profile{
 		path:   path,
-		Config: cfg,
+		config: &cfg,
 	}
 
 	if prof.CPUProfile {
