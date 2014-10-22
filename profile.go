@@ -94,13 +94,16 @@ func (p *profile) Stop() {
 	}
 }
 
-func defaultOptions() []func(*config) { return []func(*config){CPUProfile} }
+func defaultOptions() []func(*config) {
+	return []func(*config){
+		CPUProfile,
+		ProfilePath(""),
+	}
+}
 
-// Start starts a new profiling session cured using *config.
+// Start starts a new profiling session.
 // The caller should call the Stop method on the value returned
 // to cleanly stop profiling.
-// Passing a nil *config is the same as passing a *config with
-// defaults chosen.
 func Start(options ...func(*config)) interface {
 	Stop()
 } {
