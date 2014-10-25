@@ -12,6 +12,8 @@ import (
 	"runtime/pprof"
 )
 
+const memProfileRate = 4096
+
 type config struct {
 	// Quiet suppresses informational messages during profiling.
 	Quiet bool
@@ -47,8 +49,6 @@ func NoShutdownHook(c *config) { c.NoShutdownHook = true }
 // Quiet suppresses informational messages during profiling.
 func Quiet(c *config) { c.Quiet = true }
 
-const memProfileRate = 4096
-
 func (c *config) NoProfiles() {
 	c.CPUProfile = false
 	c.MemProfile = false
@@ -73,13 +73,10 @@ func BlockProfile(c *config) {
 	c.BlockProfile = true
 }
 
-// ProfilePath controls the base path where various profiling
-// files are written. If blank, the base path will be generated
-// by ioutil.TempDir.
-func ProfilePath(path string) func(*config) {
-	return func(c *config) {
-		c.ProfilePath = path
-	}
+func defaultConfig() *config {
+	cfg := &config{ProfilePath: ""}
+	CPUProfile(cfg)
+	return cfg
 }
 
 type profile struct {
@@ -94,23 +91,15 @@ func (p *profile) Stop() {
 	}
 }
 
-func defaultOptions() []func(*config) {
-	return []func(*config){
-		CPUProfile,
-		ProfilePath(""),
-	}
-}
-
 // Start starts a new profiling session.
 // The caller should call the Stop method on the value returned
 // to cleanly stop profiling.
 func Start(options ...func(*config)) interface {
 	Stop()
 } {
-	options = append(defaultOptions(), options...)
-	var cfg config
+	cfg := defaultConfig()
 	for _, option := range options {
-		option(&cfg)
+		option(cfg)
 	}
 
 	path := cfg.ProfilePath
@@ -125,7 +114,7 @@ func Start(options ...func(*config)) interface {
 	}
 	prof := &profile{
 		path:   path,
-		config: &cfg,
+		config: cfg,
 	}
 
 	switch {
