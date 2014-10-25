@@ -3,7 +3,7 @@ package profile_test
 import (
 	"os"
 
-	"github.com/davecheney/profile"
+	"github.com/pkg/profile"
 )
 
 func ExampleStart() {

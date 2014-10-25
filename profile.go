@@ -176,8 +176,9 @@ func Start(options ...func(*config)) interface {
 			f.Close()
 			runtime.SetBlockProfileRate(0)
 		})
+	}
 
-	case !prof.NoShutdownHook:
+	if !prof.NoShutdownHook {
 		go func() {
 			c := make(chan os.Signal, 1)
 			signal.Notify(c, os.Interrupt)
