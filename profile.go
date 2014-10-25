@@ -128,7 +128,8 @@ func Start(options ...func(*config)) interface {
 		config: &cfg,
 	}
 
-	if prof.CPUProfile {
+	switch {
+	case prof.CPUProfile:
 		fn := filepath.Join(prof.path, "cpu.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
@@ -142,9 +143,8 @@ func Start(options ...func(*config)) interface {
 			pprof.StopCPUProfile()
 			f.Close()
 		})
-	}
 
-	if prof.MemProfile {
+	case prof.MemProfile:
 		fn := filepath.Join(prof.path, "mem.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
@@ -160,9 +160,8 @@ func Start(options ...func(*config)) interface {
 			f.Close()
 			runtime.MemProfileRate = old
 		})
-	}
 
-	if prof.BlockProfile {
+	case prof.BlockProfile:
 		fn := filepath.Join(prof.path, "block.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
