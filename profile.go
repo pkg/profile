@@ -3,6 +3,7 @@
 package profile
 
 import (
+	"flag"
 	"io/ioutil"
 	"log"
 	"os"
@@ -12,9 +13,7 @@ import (
 	"runtime/pprof"
 )
 
-const memProfileRate = 4096
-
-type config struct {
+type profile struct {
 	// Quiet suppresses informational messages during profiling.
 	Quiet bool
 
@@ -37,6 +36,11 @@ type config struct {
 	// NoShutdownHook controls whether the profiling package should
 	// hook SIGINT to write profiles cleanly.
 	NoShutdownHook bool
+
+	// MemProfileRate sent the rate for the memory profile
+	MemProfileRate int
+
+	closers []func()
 }
 
 // NoShutdownHook controls whether the profiling package should
@@ -44,45 +48,42 @@ type config struct {
 // Programs with more sophisticated signal handling should set
 // this to true and ensure the Stop() function returned from Start()
 // is called during shutdown.
-func NoShutdownHook(c *config) { c.NoShutdownHook = true }
+func NoShutdownHook(p *profile) { p.NoShutdownHook = true }
 
 // Quiet suppresses informational messages during profiling.
-func Quiet(c *config) { c.Quiet = true }
+func Quiet(p *profile) { p.Quiet = true }
 
-func (c *config) NoProfiles() {
-	c.CPUProfile = false
-	c.MemProfile = false
-	c.BlockProfile = false
+func (p *profile) NoProfiles() {
+	p.CPUProfile = false
+	p.MemProfile = false
+	p.BlockProfile = false
 }
 
 // CPUProfile controls if cpu profiling will be enabled. It disables any previous profiling settings.
-func CPUProfile(c *config) {
-	c.NoProfiles()
-	c.CPUProfile = true
+func CPUProfile(p *profile) {
+	p.NoProfiles()
+	p.CPUProfile = true
 }
 
 // MemProfile controls if memory profiling will be enabled. It disables any previous profiling settings.
-func MemProfile(c *config) {
-	c.NoProfiles()
-	c.MemProfile = true
+func MemProfile(p *profile) {
+	p.NoProfiles()
+	p.MemProfile = true
 }
 
 // BlockProfile controls if block (contention) profiling will be enabled. It disables any previous profiling settings.
-func BlockProfile(c *config) {
-	c.NoProfiles()
-	c.BlockProfile = true
+func BlockProfile(p *profile) {
+	p.NoProfiles()
+	p.BlockProfile = true
 }
 
-func defaultConfig() *config {
-	cfg := &config{ProfilePath: ""}
-	CPUProfile(cfg)
-	return cfg
-}
+// resolvePath resolves the profile's path or outputs to a temporarry directory
+func resolvePath(path string) (resolvedPath string, err error) {
+	if path != "" {
+		return path, os.MkdirAll(path, 0777)
+	}
 
-type profile struct {
-	path string
-	*config
-	closers []func()
+	return ioutil.TempDir("", "profile")
 }
 
 func (p *profile) Stop() {
@@ -91,42 +92,44 @@ func (p *profile) Stop() {
 	}
 }
 
+func newProfile() *profile {
+	prof := &profile{MemProfileRate: 4096}
+	CPUProfile(prof)
+	return prof
+}
+
 // Start starts a new profiling session.
 // The caller should call the Stop method on the value returned
 // to cleanly stop profiling.
-func Start(options ...func(*config)) interface {
+func Start(options ...func(*profile)) interface {
 	Stop()
 } {
-	cfg := defaultConfig()
+	flag.Parse()
+
+	prof := newProfile()
 	for _, option := range options {
-		option(cfg)
+		option(prof)
 	}
 
-	path := cfg.ProfilePath
-	var err error
-	if path == "" {
-		path, err = ioutil.TempDir("", "profile")
-	} else {
-		err = os.MkdirAll(path, 0777)
-	}
+	path, err := resolvePath(prof.ProfilePath)
 	if err != nil {
 		log.Fatalf("profile: could not create initial output directory: %v", err)
 	}
-	prof := &profile{
-		path:   path,
-		config: cfg,
+
+	prof.ProfilePath = path
+	if prof.Quiet {
+		log.SetOutput(ioutil.Discard)
 	}
 
 	switch {
 	case prof.CPUProfile:
-		fn := filepath.Join(prof.path, "cpu.pprof")
+		fn := filepath.Join(prof.ProfilePath, "cpu.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatalf("profile: could not create cpu profile %q: %v", fn, err)
 		}
-		if !prof.Quiet {
-			log.Printf("profile: cpu profiling enabled, %s", fn)
-		}
+
+		log.Printf("profile: cpu profiling enabled, %s", fn)
 		pprof.StartCPUProfile(f)
 		prof.closers = append(prof.closers, func() {
 			pprof.StopCPUProfile()
@@ -134,16 +137,15 @@ func Start(options ...func(*config)) interface {
 		})
 
 	case prof.MemProfile:
-		fn := filepath.Join(prof.path, "mem.pprof")
+		fn := filepath.Join(prof.ProfilePath, "mem.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatalf("profile: could not create memory profile %q: %v", fn, err)
 		}
 		old := runtime.MemProfileRate
-		runtime.MemProfileRate = memProfileRate
-		if !prof.Quiet {
-			log.Printf("profile: memory profiling enabled, %s", fn)
-		}
+		runtime.MemProfileRate = prof.MemProfileRate
+
+		log.Printf("profile: memory profiling enabled, %s", fn)
 		prof.closers = append(prof.closers, func() {
 			pprof.Lookup("heap").WriteTo(f, 0)
 			f.Close()
@@ -151,15 +153,14 @@ func Start(options ...func(*config)) interface {
 		})
 
 	case prof.BlockProfile:
-		fn := filepath.Join(prof.path, "block.pprof")
+		fn := filepath.Join(prof.ProfilePath, "block.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatalf("profile: could not create block profile %q: %v", fn, err)
 		}
 		runtime.SetBlockProfileRate(1)
-		if !prof.Quiet {
-			log.Printf("profile: block profiling enabled, %s", fn)
-		}
+
+		log.Printf("profile: block profiling enabled, %s", fn)
 		prof.closers = append(prof.closers, func() {
 			pprof.Lookup("block").WriteTo(f, 0)
 			f.Close()
