@@ -27,17 +27,17 @@ type profile struct {
 	// It defaults to false.
 	BlockProfile bool
 
-	// ProfilePath controls the base path where various profiling
-	// files are written. If blank, the base path will be generated
-	// by ioutil.TempDir.
-	ProfilePath string
-
 	// NoShutdownHook controls whether the profiling package should
 	// hook SIGINT to write profiles cleanly.
 	NoShutdownHook bool
 
 	// MemProfileRate sent the rate for the memory profile
 	memProfileRate int
+
+	// ProfilePath controls the base path where various profiling
+	// files are written. If blank, the base path will be generated
+	// by ioutil.TempDir.
+	path string
 
 	closers []func()
 }
@@ -55,7 +55,7 @@ func Quiet(p *profile) { p.Quiet = true }
 // Sets the profile path
 func ProfilePath(path string) func(*profile) {
 	return func(p *profile) {
-		p.ProfilePath = path
+		p.path = path
 	}
 }
 
@@ -84,8 +84,8 @@ func BlockProfile(p *profile) {
 }
 
 // path resolves the profile's path or outputs to a temporary directory
-func (p *profile) path() (resolvedPath string, err error) {
-	if p := p.ProfilePath; p != "" {
+func (p *profile) profilePath() (resolvedPath string, err error) {
+	if p := p.path; p != "" {
 		return p, os.MkdirAll(p, 0777)
 	}
 
@@ -115,7 +115,7 @@ func Start(options ...func(*profile)) interface {
 		option(prof)
 	}
 
-	path, err := prof.path()
+	path, err := prof.profilePath()
 	if err != nil {
 		log.Fatalf("profile: could not create initial output directory: %v", err)
 	}
