@@ -91,7 +91,7 @@ func (p *profile) Stop() {
 	}
 }
 
-func newProfile() *profile {
+func baseProfile() *profile {
 	prof := &profile{memProfileRate: 4096}
 	CPUProfile(prof)
 	return prof
@@ -103,7 +103,7 @@ func newProfile() *profile {
 func Start(options ...func(*profile)) interface {
 	Stop()
 } {
-	prof := newProfile()
+	prof := baseProfile()
 	for _, option := range options {
 		option(prof)
 	}
