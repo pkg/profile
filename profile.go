@@ -113,7 +113,6 @@ func Start(options ...func(*profile)) interface {
 		log.Fatalf("profile: could not create initial output directory: %v", err)
 	}
 
-	prof.ProfilePath = path
 	if prof.Quiet {
 		log.SetOutput(ioutil.Discard)
 	}
