@@ -101,9 +101,10 @@ func (p *profile) Stop() {
 }
 
 func baseProfile() *profile {
-	prof := &profile{memProfileRate: 4096}
-	CPUProfile(prof)
-	return prof
+	return &profile{
+		memProfileRate: 4096,
+		CPUProfile:     true,
+	}
 }
 
 // Start starts a new profiling session.
