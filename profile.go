@@ -125,7 +125,6 @@ func Start(options ...func(*profile)) interface {
 		if err != nil {
 			log.Fatalf("profile: could not create cpu profile %q: %v", fn, err)
 		}
-
 		log.Printf("profile: cpu profiling enabled, %s", fn)
 		pprof.StartCPUProfile(f)
 		prof.closers = append(prof.closers, func() {
@@ -141,7 +140,6 @@ func Start(options ...func(*profile)) interface {
 		}
 		old := runtime.MemProfileRate
 		runtime.MemProfileRate = prof.memProfileRate
-
 		log.Printf("profile: memory profiling enabled, %s", fn)
 		prof.closers = append(prof.closers, func() {
 			pprof.Lookup("heap").WriteTo(f, 0)
@@ -156,7 +154,6 @@ func Start(options ...func(*profile)) interface {
 			log.Fatalf("profile: could not create block profile %q: %v", fn, err)
 		}
 		runtime.SetBlockProfileRate(1)
-
 		log.Printf("profile: block profiling enabled, %s", fn)
 		prof.closers = append(prof.closers, func() {
 			pprof.Lookup("block").WriteTo(f, 0)
