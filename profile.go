@@ -82,7 +82,8 @@ func BlockProfile(p *profile) {
 	p.BlockProfile = true
 }
 
-// path resolves the profile's path or outputs to a temporary directory
+// profilePath returns the path where the output will be dumped. If it is not
+// set, a temporary directory will be used
 func (p *profile) profilePath() (resolvedPath string, err error) {
 	if p := p.path; p != "" {
 		return p, os.MkdirAll(p, 0777)
