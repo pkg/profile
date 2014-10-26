@@ -52,6 +52,13 @@ func NoShutdownHook(p *profile) { p.NoShutdownHook = true }
 // Quiet suppresses informational messages during profiling.
 func Quiet(p *profile) { p.Quiet = true }
 
+// Sets the profile path
+func ProfilePath(path string) func(*profile) {
+	return func(p *profile) {
+		p.ProfilePath = path
+	}
+}
+
 func (p *profile) NoProfiles() {
 	p.CPUProfile = false
 	p.MemProfile = false
