@@ -51,7 +51,9 @@ func NoShutdownHook(p *profile) { p.NoShutdownHook = true }
 // Quiet suppresses informational messages during profiling.
 func Quiet(p *profile) { p.Quiet = true }
 
-// Sets the profile path
+// ProfilePath controls the base path where various profiling
+// files are written. If blank, the base path will be generated
+// by ioutil.TempDir.
 func ProfilePath(path string) func(*profile) {
 	return func(p *profile) {
 		p.path = path
