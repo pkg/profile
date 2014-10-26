@@ -104,10 +104,6 @@ func Start(options ...func(*profile)) interface {
 		log.Fatalf("profile: could not create initial output directory: %v", err)
 	}
 
-	if prof.Quiet {
-		log.SetOutput(ioutil.Discard)
-	}
-
 	switch prof.mode {
 	case modeCPU:
 		fn := filepath.Join(path, "cpu.pprof")
@@ -115,7 +111,9 @@ func Start(options ...func(*profile)) interface {
 		if err != nil {
 			log.Fatalf("profile: could not create cpu profile %q: %v", fn, err)
 		}
-		log.Printf("profile: cpu profiling enabled, %s", fn)
+		if !prof.Quiet {
+			log.Printf("profile: cpu profiling enabled, %s", fn)
+		}
 		pprof.StartCPUProfile(f)
 		prof.closers = append(prof.closers, func() {
 			pprof.StopCPUProfile()
@@ -130,7 +128,9 @@ func Start(options ...func(*profile)) interface {
 		}
 		old := runtime.MemProfileRate
 		runtime.MemProfileRate = MemProfileRate
-		log.Printf("profile: memory profiling enabled, %s", fn)
+		if !prof.Quiet {
+			log.Printf("profile: memory profiling enabled, %s", fn)
+		}
 		prof.closers = append(prof.closers, func() {
 			pprof.Lookup("heap").WriteTo(f, 0)
 			f.Close()
@@ -144,7 +144,9 @@ func Start(options ...func(*profile)) interface {
 			log.Fatalf("profile: could not create block profile %q: %v", fn, err)
 		}
 		runtime.SetBlockProfileRate(1)
-		log.Printf("profile: block profiling enabled, %s", fn)
+		if !prof.Quiet {
+			log.Printf("profile: block profiling enabled, %s", fn)
+		}
 		prof.closers = append(prof.closers, func() {
 			pprof.Lookup("block").WriteTo(f, 0)
 			f.Close()
