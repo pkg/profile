@@ -3,7 +3,6 @@
 package profile
 
 import (
-	"flag"
 	"io/ioutil"
 	"log"
 	"os"
@@ -104,8 +103,6 @@ func newProfile() *profile {
 func Start(options ...func(*profile)) interface {
 	Stop()
 } {
-	flag.Parse()
-
 	prof := newProfile()
 	for _, option := range options {
 		option(prof)
