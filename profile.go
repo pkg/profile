@@ -77,9 +77,9 @@ func BlockProfile(p *profile) {
 }
 
 // resolvePath resolves the profile's path or outputs to a temporarry directory
-func resolvePath(path string) (resolvedPath string, err error) {
-	if path != "" {
-		return path, os.MkdirAll(path, 0777)
+func (p *profile) path() (resolvedPath string, err error) {
+	if p := p.ProfilePath; p != "" {
+		return p, os.MkdirAll(p, 0777)
 	}
 
 	return ioutil.TempDir("", "profile")
@@ -108,7 +108,7 @@ func Start(options ...func(*profile)) interface {
 		option(prof)
 	}
 
-	path, err := resolvePath(prof.ProfilePath)
+	path, err := prof.path()
 	if err != nil {
 		log.Fatalf("profile: could not create initial output directory: %v", err)
 	}
