@@ -37,7 +37,7 @@ type profile struct {
 	NoShutdownHook bool
 
 	// MemProfileRate sent the rate for the memory profile
-	MemProfileRate int
+	memProfileRate int
 
 	closers []func()
 }
@@ -92,7 +92,7 @@ func (p *profile) Stop() {
 }
 
 func newProfile() *profile {
-	prof := &profile{MemProfileRate: 4096}
+	prof := &profile{memProfileRate: 4096}
 	CPUProfile(prof)
 	return prof
 }
@@ -140,7 +140,7 @@ func Start(options ...func(*profile)) interface {
 			log.Fatalf("profile: could not create memory profile %q: %v", fn, err)
 		}
 		old := runtime.MemProfileRate
-		runtime.MemProfileRate = prof.MemProfileRate
+		runtime.MemProfileRate = prof.memProfileRate
 
 		log.Printf("profile: memory profiling enabled, %s", fn)
 		prof.closers = append(prof.closers, func() {
