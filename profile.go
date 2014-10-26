@@ -76,7 +76,7 @@ func BlockProfile(p *profile) {
 	p.BlockProfile = true
 }
 
-// resolvePath resolves the profile's path or outputs to a temporarry directory
+// path resolves the profile's path or outputs to a temporary directory
 func (p *profile) path() (resolvedPath string, err error) {
 	if p := p.ProfilePath; p != "" {
 		return p, os.MkdirAll(p, 0777)
