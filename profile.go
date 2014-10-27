@@ -12,8 +12,8 @@ import (
 	"runtime/pprof"
 )
 
-// MemProfileRate sets the rate for the memory profile.
-var MemProfileRate = 4096
+// memProfileRate sets the rate for the memory profile.
+const memProfileRate = 4096
 
 const (
 	cpuMode = iota
@@ -68,16 +68,6 @@ func ProfilePath(path string) func(*profile) {
 	}
 }
 
-// profilePath returns the path where the output will be dumped. If it is not
-// set, a temporary directory will be used
-func (p *profile) profilePath() (resolvedPath string, err error) {
-	if p := p.path; p != "" {
-		return p, os.MkdirAll(p, 0777)
-	}
-
-	return ioutil.TempDir("", "profile")
-}
-
 // Stop stops the profile and flushes any unwritten data.
 func (p *profile) Stop() {
 	for _, c := range p.closers {
@@ -96,7 +86,13 @@ func Start(options ...func(*profile)) interface {
 		option(&prof)
 	}
 
-	path, err := prof.profilePath()
+	path, err := func() (string, error) {
+		if p := prof.path; p != "" {
+			return p, os.MkdirAll(p, 0777)
+		}
+		return ioutil.TempDir("", "profile")
+	}()
+
 	if err != nil {
 		log.Fatalf("profile: could not create initial output directory: %v", err)
 	}
@@ -124,7 +120,7 @@ func Start(options ...func(*profile)) interface {
 			log.Fatalf("profile: could not create memory profile %q: %v", fn, err)
 		}
 		old := runtime.MemProfileRate
-		runtime.MemProfileRate = MemProfileRate
+		runtime.MemProfileRate = memProfileRate
 		if !prof.quiet {
 			log.Printf("profile: memory profiling enabled, %s", fn)
 		}
