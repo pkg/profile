@@ -225,7 +225,7 @@ func Start(options ...func(*profile)) interface {
 	}
 
 	prof.closers = append(prof.closers, func() {
-		started = 0
+		atomic.SwapUint32(&started, 0)
 	})
 
 	return &prof
