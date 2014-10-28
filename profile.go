@@ -44,7 +44,7 @@ type profile struct {
 	noShutdownHook bool
 
 	// noOverride controls whether command line flags can override
-	// the profile's settings or not.
+	// the profile's settings.
 	noOverride bool
 
 	// mode holds the type of profiling that will be made
@@ -68,7 +68,7 @@ func NoShutdownHook(p *profile) { p.noShutdownHook = true }
 // Quiet suppresses informational messages during profiling.
 func Quiet(p *profile) { p.quiet = true }
 
-// NoOverride protects this profile's settings from being overriden by command line flags.
+// NoOverride protects this profile's settings from being overridden by command line flags.
 func NoOverride(p *profile) { p.noOverride = true }
 
 // CPUProfile controls if cpu profiling will be enabled. It disables any previous profiling settings.
