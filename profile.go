@@ -3,7 +3,6 @@
 package profile
 
 import (
-	"flag"
 	"io/ioutil"
 	"log"
 	"os"
@@ -20,15 +19,6 @@ var memProfileRate = 4096
 // started signifies whether profiling is running (1 being 'Yes' and 0 being 'No')
 var started uint32 = 0
 
-var (
-	cpuFlag    = flag.Bool("profile.cpu", false, "enables CPU profiling")
-	memFlag    = flag.Bool("profile.mem", false, "enables memory profiling")
-	blockFlag  = flag.Bool("profile.block", false, "enables block profiling")
-	pathFlag   = flag.String("profile.path", "", "allows setting of the output directory")
-	quietFlag  = flag.Bool("profile.quiet", false, "disables logging during profiling")
-	noHookFlag = flag.Bool("profile.nohook", false, "enables hook on OS interrupt signals")
-)
-
 const (
 	cpuMode = iota
 	memMode
@@ -42,10 +32,6 @@ type profile struct {
 	// noShutdownHook controls whether the profiling package should
 	// hook SIGINT to write profiles cleanly.
 	noShutdownHook bool
-
-	// noOverride controls whether command line flags can override
-	// the profile's settings.
-	noOverride bool
 
 	// mode holds the type of profiling that will be made
 	mode int
@@ -67,9 +53,6 @@ func NoShutdownHook(p *profile) { p.noShutdownHook = true }
 
 // Quiet suppresses informational messages during profiling.
 func Quiet(p *profile) { p.quiet = true }
-
-// NoOverride protects this profile's settings from being overridden by command line flags.
-func NoOverride(p *profile) { p.noOverride = true }
 
 // CPUProfile controls if cpu profiling will be enabled. It disables any previous profiling settings.
 func CPUProfile(p *profile) { p.mode = cpuMode }
@@ -105,30 +88,6 @@ func (p *profile) Stop() {
 	}
 }
 
-// applyFlags overrides profile settings by applying command line flags.
-func applyFlags(p *profile) {
-	flag.Parse()
-
-	switch {
-	case *cpuFlag:
-		p.mode = cpuMode
-	case *memFlag:
-		p.mode = memMode
-	case *blockFlag:
-		p.mode = blockMode
-	}
-
-	if *pathFlag != "" {
-		p.path = *pathFlag
-	}
-	if *quietFlag {
-		p.quiet = true
-	}
-	if *noHookFlag {
-		p.noShutdownHook = true
-	}
-}
-
 // Start starts a new profiling session.
 // The caller should call the Stop method on the value returned
 // to cleanly stop profiling.
@@ -136,18 +95,14 @@ func Start(options ...func(*profile)) interface {
 	Stop()
 } {
 	var prof profile
-	// disallow starting multiple profiles
+
 	if !atomic.CompareAndSwapUint32(&started, 0, 1) {
-		log.Println("profile: Start() ignored - can not run multiple profiles at the same time")
+		log.Println("profile: Start() cancelled - already running...")
 		return &prof
 	}
 
 	for _, option := range options {
 		option(&prof)
-	}
-
-	if !prof.noOverride {
-		applyFlags(&prof)
 	}
 
 	path, err := func() (string, error) {
