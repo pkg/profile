@@ -16,8 +16,8 @@ import (
 // memProfileRate holds the rate for the memory profile.
 var memProfileRate = 4096
 
-// started signifies whether profiling is running (1 being 'Yes' and 0 being 'No')
-var started uint32 = 0
+// started counts the number of times Start has been called
+var started uint32
 
 const (
 	cpuMode = iota
@@ -94,13 +94,11 @@ func (p *profile) Stop() {
 func Start(options ...func(*profile)) interface {
 	Stop()
 } {
-	var prof profile
-
 	if !atomic.CompareAndSwapUint32(&started, 0, 1) {
-		log.Println("profile: Start() cancelled - already running...")
-		return &prof
+		log.Fatal("profile: Start() already called")
 	}
 
+	var prof profile
 	for _, option := range options {
 		option(&prof)
 	}
