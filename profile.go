@@ -10,10 +10,14 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
+	"sync/atomic"
 )
 
-// memProfileRate sets the rate for the memory profile.
-const memProfileRate = 4096
+// memProfileRate holds the rate for the memory profile.
+var memProfileRate = 4096
+
+// started counts the number of times Start has been called
+var started uint32
 
 const (
 	cpuMode = iota
@@ -56,6 +60,15 @@ func CPUProfile(p *profile) { p.mode = cpuMode }
 // MemProfile controls if memory profiling will be enabled. It disables any previous profiling settings.
 func MemProfile(p *profile) { p.mode = memMode }
 
+// MemProfileRate controls if memory profiling will be enabled. Additionally, it takes a parameter which
+// allows the setting of the memory profile rate.
+func MemProfileRate(rate int) func(*profile) {
+	return func(p *profile) {
+		memProfileRate = rate
+		p.mode = memMode
+	}
+}
+
 // BlockProfile controls if block (contention) profiling will be enabled. It disables any previous profiling settings.
 func BlockProfile(p *profile) { p.mode = blockMode }
 
@@ -81,6 +94,10 @@ func (p *profile) Stop() {
 func Start(options ...func(*profile)) interface {
 	Stop()
 } {
+	if !atomic.CompareAndSwapUint32(&started, 0, 1) {
+		log.Fatal("profile: Start() already called")
+	}
+
 	var prof profile
 	for _, option := range options {
 		option(&prof)
@@ -122,7 +139,7 @@ func Start(options ...func(*profile)) interface {
 		old := runtime.MemProfileRate
 		runtime.MemProfileRate = memProfileRate
 		if !prof.quiet {
-			log.Printf("profile: memory profiling enabled, %s", fn)
+			log.Printf("profile: memory profiling enabled (rate %d), %s", memProfileRate, fn)
 		}
 		prof.closers = append(prof.closers, func() {
 			pprof.Lookup("heap").WriteTo(f, 0)
@@ -159,6 +176,10 @@ func Start(options ...func(*profile)) interface {
 			os.Exit(0)
 		}()
 	}
+
+	prof.closers = append(prof.closers, func() {
+		atomic.SwapUint32(&started, 0)
+	})
 
 	return &prof
 }

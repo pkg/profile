@@ -23,6 +23,11 @@ func ExampleMemProfile() {
 	defer profile.Start(profile.MemProfile).Stop()
 }
 
+func ExampleMemProfileRate() {
+	// use memory profiling with custom rate and output to current directory.
+	defer profile.Start(profile.MemProfileRate(2048)).Stop()
+}
+
 func ExampleProfilePath() {
 	// set the location that the profile will be written to
 	defer profile.Start(profile.ProfilePath(os.Getenv("HOME")))
