@@ -9,10 +9,12 @@ import (
 	"testing"
 )
 
+type checkFn func(t *testing.T, stdout, stderr []byte, err error)
+
 var profileTests = []struct {
 	name   string
 	code   string
-	checks []func(t *testing.T, stdout, stderr []byte, err error)
+	checks []checkFn
 }{{
 	name: "default profile",
 	code: `
@@ -24,7 +26,7 @@ func main() {
 	defer profile.Start().Stop()
 }	
 `,
-	checks: f(NoStdout, NoErr),
+	checks: []checkFn{NoStdout, NoErr},
 }, {
 	name: "profile quiet",
 	code: `
@@ -36,7 +38,7 @@ func main() {
         defer profile.Start(profile.Quiet).Stop()
 }       
 `,
-	checks: f(NoStdout, NoStderr, NoErr),
+	checks: []checkFn{NoStdout, NoStderr, NoErr},
 }}
 
 func TestProfile(t *testing.T) {
@@ -47,10 +49,6 @@ func TestProfile(t *testing.T) {
 			f(t, stdout, stderr, err)
 		}
 	}
-}
-
-func f(funcs ...func(*testing.T, []byte, []byte, error)) []func(*testing.T, []byte, []byte, error) {
-	return funcs
 }
 
 // NoStdout checks that stdout was blank.
