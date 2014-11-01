@@ -203,6 +203,7 @@ func NoErr(t *testing.T, _, _ []byte, err error) {
 	}
 }
 
+// validatedOutput validates the given slice of lines against a scanned buffer
 func validateOutput(buf *bytes.Buffer, lines []string) bool {
 	s := bufio.NewScanner(buf)
 	for _, l := range lines {
