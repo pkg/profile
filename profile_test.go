@@ -159,7 +159,7 @@ func Stdout(lines ...string) checkFn {
 	return func(t *testing.T, stdout, _ []byte, _ error) {
 		buf := bytes.NewBuffer(stdout)
 		if !validateOutput(buf, lines) {
-			t.Errorf("stderr: wanted '%s', got '%s'", lines, stdout)
+			t.Errorf("stdout: wanted '%s', got '%s'", lines, stdout)
 		}
 
 	}
