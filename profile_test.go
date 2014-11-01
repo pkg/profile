@@ -172,7 +172,6 @@ func NoErr(t *testing.T, _, _ []byte, err error) {
 
 func validateOutput(buf *bytes.Buffer, lines []string) bool {
 	s := bufio.NewScanner(buf)
-
 	for _, l := range lines {
 		if !s.Scan() {
 			return false
@@ -181,7 +180,6 @@ func validateOutput(buf *bytes.Buffer, lines []string) bool {
 			return false
 		}
 	}
-
 	return true
 }
 
