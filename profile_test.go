@@ -1,11 +1,13 @@
 package profile
 
 import (
+	"bufio"
 	"bytes"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -16,7 +18,7 @@ var profileTests = []struct {
 	code   string
 	checks []checkFn
 }{{
-	name: "default profile",
+	name: "default profile (cpu)",
 	code: `
 package main
 
@@ -26,7 +28,75 @@ func main() {
 	defer profile.Start().Stop()
 }	
 `,
-	checks: []checkFn{NoStdout, NoErr},
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: cpu profiling enabled"),
+		NoErr,
+	},
+}, {
+	name: "memory profile",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start(profile.MemProfile).Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: memory profiling enabled"),
+		NoErr,
+	},
+}, {
+	name: "block profile",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start(profile.BlockProfile).Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: block profiling enabled"),
+		NoErr,
+	},
+}, {
+	name: "profile path",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start(profile.ProfilePath("."), profile.MemProfile).Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: memory profiling enabled, mem.pprof"),
+		NoErr,
+	},
+}, {
+	name: "profile path error",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+		defer profile.Start(profile.ProfilePath("README.md")).Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("could not create initial output"),
+		Err,
+	},
 }, {
 	name: "profile quiet",
 	code: `
@@ -51,10 +121,31 @@ func TestProfile(t *testing.T) {
 	}
 }
 
+// Stdout verifies that the given lines match the output from stdout
+func Stdout(lines ...string) checkFn {
+	return func(t *testing.T, stdout, _ []byte, _ error) {
+		buf := bytes.NewBuffer(stdout)
+		if !validateOutput(buf, lines) {
+			t.Errorf("stderr: wanted '%s', got '%s'", lines, stdout)
+		}
+
+	}
+}
+
 // NoStdout checks that stdout was blank.
 func NoStdout(t *testing.T, stdout, _ []byte, _ error) {
 	if len := len(stdout); len > 0 {
 		t.Errorf("stdout: wanted 0 bytes, got %d", len)
+	}
+}
+
+// Stderr verifies that the given lines match the output from stderr
+func Stderr(lines ...string) checkFn {
+	return func(t *testing.T, stdout, stderr []byte, _ error) {
+		buf := bytes.NewBuffer(stderr)
+		if !validateOutput(buf, lines) {
+			t.Errorf("stderr: wanted '%s', got '%s'", lines, stderr)
+		}
 	}
 }
 
@@ -65,11 +156,33 @@ func NoStderr(t *testing.T, _, stderr []byte, _ error) {
 	}
 }
 
+// Err checks that there was an error returned
+func Err(t *testing.T, _, _ []byte, err error) {
+	if err == nil {
+		t.Errorf("expected error")
+	}
+}
+
 // NoErr checks that err was nil
 func NoErr(t *testing.T, _, _ []byte, err error) {
 	if err != nil {
 		t.Errorf("error: expected nil, got %v", err)
 	}
+}
+
+func validateOutput(buf *bytes.Buffer, lines []string) bool {
+	s := bufio.NewScanner(buf)
+
+	for _, l := range lines {
+		if !s.Scan() {
+			return false
+		}
+		if !strings.Contains(s.Text(), l) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // runTest executes the go program supplied and returns the contents of stdout,
