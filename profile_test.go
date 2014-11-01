@@ -164,8 +164,8 @@ func NoStdout(t *testing.T, stdout, _ []byte, _ error) {
 // Stderr verifies that the given lines match the output from stderr
 func Stderr(lines ...string) checkFn {
 	return func(t *testing.T, stdout, stderr []byte, _ error) {
-		buf := bytes.NewBuffer(stderr)
-		if !validateOutput(buf, lines) {
+		r := bytes.NewReader(stderr)
+		if !validateOutput(r, lines) {
 			t.Errorf("stderr: wanted '%s', got '%s'", lines, stderr)
 		}
 	}
@@ -192,11 +192,11 @@ func NoErr(t *testing.T, _, _ []byte, err error) {
 	}
 }
 
-// validatedOutput validates the given slice of lines against a scanned buffer
-func validateOutput(buf *bytes.Buffer, lines []string) bool {
-	s := bufio.NewScanner(buf)
-	for _, l := range lines {
-		if !s.Scan() || !strings.Contains(s.Text(), l) {
+// validatedOutput validates the given slice of lines against data from the given reader.
+func validateOutput(r *bytes.Reader, want []string) bool {
+	s := bufio.NewScanner(r)
+	for _, line := range want {
+		if !s.Scan() || !strings.Contains(s.Text(), line) {
 			return false
 		}
 	}
