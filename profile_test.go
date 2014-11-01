@@ -163,7 +163,7 @@ func NoStdout(t *testing.T, stdout, _ []byte, _ error) {
 
 // Stderr verifies that the given lines match the output from stderr
 func Stderr(lines ...string) checkFn {
-	return func(t *testing.T, stdout, stderr []byte, _ error) {
+	return func(t *testing.T, _, stderr []byte, _ error) {
 		r := bytes.NewReader(stderr)
 		if !validateOutput(r, lines) {
 			t.Errorf("stderr: wanted '%s', got '%s'", lines, stderr)
