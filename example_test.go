@@ -24,7 +24,7 @@ func ExampleMemProfile() {
 }
 
 func ExampleMemProfileRate() {
-	// use memory profiling with custom rate and output to current directory.
+	// use memory profiling with custom rate.
 	defer profile.Start(profile.MemProfileRate(2048)).Stop()
 }
 
