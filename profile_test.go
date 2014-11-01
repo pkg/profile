@@ -73,12 +73,12 @@ package main
 import "github.com/pkg/profile"
 
 func main() {
-	defer profile.Start(profile.ProfilePath("."), profile.MemProfile).Stop()
+	defer profile.Start(profile.ProfilePath(".")).Stop()
 }	
 `,
 	checks: []checkFn{
 		NoStdout,
-		Stderr("profile: memory profiling enabled, mem.pprof"),
+		Stderr("profile: cpu profiling enabled, cpu.pprof"),
 		NoErr,
 	},
 }, {
