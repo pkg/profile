@@ -50,6 +50,39 @@ func main() {
 		NoErr,
 	},
 }, {
+	name: "memory profile (rate 2048)",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start(profile.MemProfileRate(2048)).Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: memory profiling enabled (rate 2048)"),
+		NoErr,
+	},
+}, {
+	name: "double start",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start().Stop()
+	defer profile.Start().Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("cpu profiling enabled", "profile: Start() already called"),
+		Err,
+	},
+}, {
 	name: "block profile",
 	code: `
 package main
