@@ -3,6 +3,7 @@ package profile
 import (
 	"bufio"
 	"bytes"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -193,7 +194,7 @@ func NoErr(t *testing.T, _, _ []byte, err error) {
 }
 
 // validatedOutput validates the given slice of lines against data from the given reader.
-func validateOutput(r *bytes.Reader, want []string) bool {
+func validateOutput(r io.Reader, want []string) bool {
 	s := bufio.NewScanner(r)
 	for _, line := range want {
 		if !s.Scan() || !strings.Contains(s.Text(), line) {
@@ -201,6 +202,52 @@ func validateOutput(r *bytes.Reader, want []string) bool {
 		}
 	}
 	return true
+}
+
+var validateOutputTests = []struct {
+	input string
+	lines []string
+	want  bool
+}{{
+	input: "",
+	want:  true,
+}, {
+	input: `profile: yes
+`,
+	want: true,
+}, {
+	input: `profile: yes
+`,
+	lines: []string{"profile: yes"},
+	want:  true,
+}, {
+	input: `profile: yes
+profile: no
+`,
+	lines: []string{"profile: yes"},
+	want:  true,
+}, {
+	input: `profile: yes
+profile: no
+`,
+	lines: []string{"profile: yes", "profile: no"},
+	want:  true,
+}, {
+	input: `profile: yes
+profile: no
+`,
+	lines: []string{"profile: no"},
+	want:  false,
+}}
+
+func TestValidateOutput(t *testing.T) {
+	for _, tt := range validateOutputTests {
+		r := strings.NewReader(tt.input)
+		got := validateOutput(r, tt.lines)
+		if tt.want != got {
+			t.Errorf("validateOutput(%q, %q), want %v, got %v", tt.input, tt.lines, tt.want, got)
+		}
+	}
 }
 
 // runTest executes the go program supplied and returns the contents of stdout,
