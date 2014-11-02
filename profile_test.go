@@ -1,11 +1,13 @@
 package profile
 
 import (
+	"bufio"
 	"bytes"
 	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -16,7 +18,7 @@ var profileTests = []struct {
 	code   string
 	checks []checkFn
 }{{
-	name: "default profile",
+	name: "default profile (cpu)",
 	code: `
 package main
 
@@ -26,7 +28,108 @@ func main() {
 	defer profile.Start().Stop()
 }	
 `,
-	checks: []checkFn{NoStdout, NoErr},
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: cpu profiling enabled"),
+		NoErr,
+	},
+}, {
+	name: "memory profile",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start(profile.MemProfile).Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: memory profiling enabled"),
+		NoErr,
+	},
+}, {
+	name: "memory profile (rate 2048)",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start(profile.MemProfileRate(2048)).Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: memory profiling enabled (rate 2048)"),
+		NoErr,
+	},
+}, {
+	name: "double start",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start().Stop()
+	defer profile.Start().Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("cpu profiling enabled", "profile: Start() already called"),
+		Err,
+	},
+}, {
+	name: "block profile",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start(profile.BlockProfile).Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: block profiling enabled"),
+		NoErr,
+	},
+}, {
+	name: "profile path",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start(profile.ProfilePath(".")).Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: cpu profiling enabled, cpu.pprof"),
+		NoErr,
+	},
+}, {
+	name: "profile path error",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+		defer profile.Start(profile.ProfilePath("README.md")).Stop()
+}	
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("could not create initial output"),
+		Err,
+	},
 }, {
 	name: "profile quiet",
 	code: `
@@ -58,10 +161,27 @@ func NoStdout(t *testing.T, stdout, _ []byte, _ error) {
 	}
 }
 
+// Stderr verifies that the given lines match the output from stderr
+func Stderr(lines ...string) checkFn {
+	return func(t *testing.T, _, stderr []byte, _ error) {
+		r := bytes.NewReader(stderr)
+		if !validateOutput(r, lines) {
+			t.Errorf("stderr: wanted '%s', got '%s'", lines, stderr)
+		}
+	}
+}
+
 // NoStderr checks that stderr was blank.
 func NoStderr(t *testing.T, _, stderr []byte, _ error) {
 	if len := len(stderr); len > 0 {
 		t.Errorf("stderr: wanted 0 bytes, got %d", len)
+	}
+}
+
+// Err checks that there was an error returned
+func Err(t *testing.T, _, _ []byte, err error) {
+	if err == nil {
+		t.Errorf("expected error")
 	}
 }
 
@@ -70,6 +190,17 @@ func NoErr(t *testing.T, _, _ []byte, err error) {
 	if err != nil {
 		t.Errorf("error: expected nil, got %v", err)
 	}
+}
+
+// validatedOutput validates the given slice of lines against data from the given reader.
+func validateOutput(r *bytes.Reader, want []string) bool {
+	s := bufio.NewScanner(r)
+	for _, line := range want {
+		if !s.Scan() || !strings.Contains(s.Text(), line) {
+			return false
+		}
+	}
+	return true
 }
 
 // runTest executes the go program supplied and returns the contents of stdout,
