@@ -239,7 +239,6 @@ func TestProfile(t *testing.T) {
 			f(t, stdout, stderr, err)
 		}
 	}
-
 	// Clean up
 	for _, fn := range []string{"cpu.pprof", "mem.pprof", "block.pprof", "pprof"} {
 		if err := os.RemoveAll(fn); err != nil {

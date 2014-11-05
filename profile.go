@@ -101,7 +101,7 @@ func (p *profile) Stop() {
 func parseFlags(p *profile) {
 	flag.Parse()
 
-	switch true {
+	switch {
 	case *cpuFlag:
 		p.mode = cpuMode
 	case *memFlag:
