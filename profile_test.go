@@ -17,6 +17,7 @@ type checkFn func(t *testing.T, stdout, stderr []byte, err error)
 var profileTests = []struct {
 	name   string
 	code   string
+	args   []string
 	checks []checkFn
 }{{
 	name: "default profile (cpu)",
@@ -143,14 +144,106 @@ func main() {
 }       
 `,
 	checks: []checkFn{NoStdout, NoStderr, NoErr},
+}, {
+	name: "flags: override default profile",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+		defer profile.Start().Stop()
+}	
+`,
+	args: []string{"-memprofile"},
+	checks: []checkFn{
+		NoStdout,
+		Stderr("memory profiling enabled"),
+		NoErr,
+	},
+}, {
+	name: "flags: override preset profile",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+		defer profile.Start(profile.MemProfile).Stop()
+}	
+`,
+	args: []string{"-cpuprofile"},
+	checks: []checkFn{
+		NoStdout,
+		Stderr("cpu profiling enabled"),
+		NoErr,
+	},
+}, {
+	name: "flags: override profile path",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+		defer profile.Start(profile.BlockProfile).Stop()
+}	
+`,
+	args: []string{"-outputdir=pprof"},
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: block profiling enabled, pprof/block.pprof"),
+		NoErr,
+	},
+}, {
+	name: "flags: set cpu profile to 'pprof' folder",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+		defer profile.Start(profile.BlockProfile).Stop()
+}	
+`,
+	args: []string{"-cpuprofile", "-outputdir=pprof"},
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: cpu profiling enabled, pprof/cpu.pprof"),
+		NoErr,
+	},
+}, {
+	name: "flags: override mem profile rate",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+		defer profile.Start().Stop()
+}	
+`,
+	args: []string{"-memprofilerate=2048"},
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: memory profiling enabled (rate 2048)"),
+		NoErr,
+	},
 }}
 
 func TestProfile(t *testing.T) {
 	for _, tt := range profileTests {
 		t.Log(tt.name)
-		stdout, stderr, err := runTest(t, tt.code)
+		stdout, stderr, err := runTest(t, tt.code, tt.args)
 		for _, f := range tt.checks {
 			f(t, stdout, stderr, err)
+		}
+	}
+
+	// Clean up
+	for _, fn := range []string{"cpu.pprof", "mem.pprof", "block.pprof", "pprof"} {
+		if err := os.RemoveAll(fn); err != nil {
+			t.Logf("warning: did not successfully clean up.")
 		}
 	}
 }
@@ -253,7 +346,7 @@ func TestValidateOutput(t *testing.T) {
 // runTest executes the go program supplied and returns the contents of stdout,
 // stderr, and an error which may contain status information about the result
 // of the program.
-func runTest(t *testing.T, code string) ([]byte, []byte, error) {
+func runTest(t *testing.T, code string, args []string) (stdOut, stdErr []byte, err error) {
 	chk := func(err error) {
 		if err != nil {
 			t.Fatal(err)
@@ -271,6 +364,7 @@ func runTest(t *testing.T, code string) ([]byte, []byte, error) {
 	chk(err)
 
 	cmd := exec.Command("go", "run", src)
+	cmd.Args = append(cmd.Args, args...)
 
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout

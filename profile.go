@@ -3,6 +3,7 @@
 package profile
 
 import (
+	"flag"
 	"io/ioutil"
 	"log"
 	"os"
@@ -23,6 +24,14 @@ const (
 	cpuMode = iota
 	memMode
 	blockMode
+)
+
+var (
+	cpuFlag     = flag.Bool("cpuprofile", false, "Enables CPU profile.")
+	memFlag     = flag.Bool("memprofile", false, "Enables memory profile.")
+	blockFlag   = flag.Bool("blockprofile", false, "Enables goroutine blocking profile.")
+	memRateFlag = flag.Int("memprofilerate", 0, "Enables memory profile at the given rate.")
+	outputFlag  = flag.String("outputdir", "", "Sets the directory where the profile will be written.")
 )
 
 type profile struct {
@@ -88,6 +97,28 @@ func (p *profile) Stop() {
 	}
 }
 
+// parseFlags analyzes the command line flags and applies them to the given profile.
+func parseFlags(p *profile) {
+	flag.Parse()
+
+	switch true {
+	case *cpuFlag:
+		p.mode = cpuMode
+	case *memFlag:
+		p.mode = memMode
+	case *blockFlag:
+		p.mode = blockMode
+	}
+
+	if *memRateFlag != 0 {
+		memProfileRate = *memRateFlag
+		p.mode = memMode
+	}
+	if *outputFlag != "" {
+		p.path = *outputFlag
+	}
+}
+
 // Start starts a new profiling session.
 // The caller should call the Stop method on the value returned
 // to cleanly stop profiling.
@@ -102,6 +133,7 @@ func Start(options ...func(*profile)) interface {
 	for _, option := range options {
 		option(&prof)
 	}
+	parseFlags(&prof)
 
 	path, err := func() (string, error) {
 		if p := prof.path; p != "" {
