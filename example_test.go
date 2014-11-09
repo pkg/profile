@@ -2,7 +2,6 @@ package profile_test
 
 import (
 	"flag"
-	"log"
 	"os"
 
 	"github.com/pkg/profile"
@@ -47,9 +46,6 @@ func ExampleStart_WithFlags() {
 	)
 	flag.Parse()
 	switch *mode {
-	case "":
-		// do nothing
-		defer profile.Start(profile.None).Stop()
 	case "cpu":
 		defer profile.Start(profile.CPUProfile).Stop()
 	case "mem":
@@ -57,6 +53,6 @@ func ExampleStart_WithFlags() {
 	case "block":
 		defer profile.Start(profile.BlockProfile).Stop()
 	default:
-		log.Fatalf("unknown profile mode %q", *mode)
+		// do nothing
 	}
 }
