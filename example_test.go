@@ -39,7 +39,7 @@ func ExampleNoShutdownHook() {
 	defer profile.Start(profile.NoShutdownHook).Stop()
 }
 
-func ExampleStart_WithFlags() {
+func ExampleStart_withFlags() {
 	// use the flags package to selectively enable profiling.
 	mode := flag.String("profile.mode", "", "enable profiling mode, one of [cpu, mem, block]")
 	flag.Parse()
