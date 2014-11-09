@@ -41,9 +41,7 @@ func ExampleNoShutdownHook() {
 
 func ExampleStart_WithFlags() {
 	// use the flags package to selectively enable profiling.
-	var (
-		mode = flag.String("profile.mode", "", "enable profiling mode, one of [cpu, mem, block]")
-	)
+	mode := flag.String("profile.mode", "", "enable profiling mode, one of [cpu, mem, block]")
 	flag.Parse()
 	switch *mode {
 	case "cpu":
