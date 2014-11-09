@@ -1,6 +1,8 @@
 package profile_test
 
 import (
+	"flag"
+	"log"
 	"os"
 
 	"github.com/pkg/profile"
@@ -36,4 +38,25 @@ func ExampleProfilePath() {
 func ExampleNoShutdownHook() {
 	// disable the automatic shutdown hook.
 	defer profile.Start(profile.NoShutdownHook).Stop()
+}
+
+func ExampleStart_WithFlags() {
+	// use the flags package to selectively enable profiling.
+	var (
+		mode = flag.String("profile.mode", "", "enable profiling mode, one of [cpu, mem, block]")
+	)
+	flag.Parse()
+	switch *mode {
+	case "":
+		// do nothing
+		defer profile.Start(profile.None).Stop()
+	case "cpu":
+		defer profile.Start(profile.CPUProfile).Stop()
+	case "mem":
+		defer profile.Start(profile.MemProfile).Stop()
+	case "block":
+		defer profile.Start(profile.BlockProfile).Stop()
+	default:
+		log.Fatalf("unknown profile mode %q", *mode)
+	}
 }

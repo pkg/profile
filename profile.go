@@ -23,6 +23,7 @@ const (
 	cpuMode = iota
 	memMode
 	blockMode
+	none
 )
 
 type profile struct {
@@ -71,6 +72,9 @@ func MemProfileRate(rate int) func(*profile) {
 
 // BlockProfile controls if block (contention) profiling will be enabled. It disables any previous profiling settings.
 func BlockProfile(p *profile) { p.mode = blockMode }
+
+// None disables any previously configured profiles.
+func None(p *profile) { p.mode = none }
 
 // ProfilePath controls the base path where various profiling
 // files are written. If blank, the base path will be generated
@@ -162,6 +166,8 @@ func Start(options ...func(*profile)) interface {
 			f.Close()
 			runtime.SetBlockProfileRate(0)
 		})
+	case none:
+		// do nothing
 	}
 
 	if !prof.noShutdownHook {
