@@ -42,6 +42,9 @@ type profile struct {
 
 	// closers holds the cleanup functions that run after each profile
 	closers []func()
+
+	// stopped records if a call to profile.Stop has been made
+	stopped uint32
 }
 
 // NoShutdownHook controls whether the profiling package should
@@ -90,6 +93,10 @@ func ProfilePath(path string) func(*profile) {
 
 // Stop stops the profile and flushes any unwritten data.
 func (p *profile) Stop() {
+	if !atomic.CompareAndSwapUint32(&p.stopped, 0, 1) {
+		// someone has already called close
+		return
+	}
 	for _, c := range p.closers {
 		c()
 	}
