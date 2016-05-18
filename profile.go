@@ -178,6 +178,10 @@ func Start(options ...func(*profile)) interface {
 		})
 	}
 
+	prof.closers = append(prof.closers, func() {
+		atomic.SwapUint32(&started, 0)
+	})
+
 	if !prof.noShutdownHook {
 		go func() {
 			c := make(chan os.Signal, 1)
@@ -185,15 +189,15 @@ func Start(options ...func(*profile)) interface {
 			<-c
 
 			log.Println("profile: caught interrupt, stopping profiles")
+			// Stop receiving any more interrupts, while exiting.
+			signal.Stop(c)
+			// Stop profiling calling all closers.
 			prof.Stop()
 
+			// Exit peacefully.
 			os.Exit(0)
 		}()
 	}
-
-	prof.closers = append(prof.closers, func() {
-		atomic.SwapUint32(&started, 0)
-	})
 
 	return &prof
 }
