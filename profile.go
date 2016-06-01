@@ -40,8 +40,8 @@ type profile struct {
 	// memProfileRate holds the rate for the memory profile.
 	memProfileRate int
 
-	// closers holds the cleanup functions that run after each profile
-	closers []func()
+	// closer holds the cleanup function that run after each profile
+	closer func()
 
 	// stopped records if a call to profile.Stop has been made
 	stopped uint32
@@ -97,15 +97,13 @@ func (p *profile) Stop() {
 		// someone has already called close
 		return
 	}
-	for _, c := range p.closers {
-		c()
-	}
+	p.closer()
+	atomic.StoreUint32(&started, 0)
 }
 
 // Start starts a new profiling session.
 // The caller should call the Stop method on the value returned
-// to cleanly stop profiling. Start can only be called once
-// per program execution.
+// to cleanly stop profiling.
 func Start(options ...func(*profile)) interface {
 	Stop()
 } {
@@ -140,10 +138,13 @@ func Start(options ...func(*profile)) interface {
 			log.Printf("profile: cpu profiling enabled, %s", fn)
 		}
 		pprof.StartCPUProfile(f)
-		prof.closers = append(prof.closers, func() {
+		prof.closer = func() {
 			pprof.StopCPUProfile()
 			f.Close()
-		})
+			if !prof.quiet {
+				log.Printf("profile: cpu profiling disabled, %s", fn)
+			}
+		}
 
 	case memMode:
 		fn := filepath.Join(path, "mem.pprof")
@@ -156,11 +157,14 @@ func Start(options ...func(*profile)) interface {
 		if !prof.quiet {
 			log.Printf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, fn)
 		}
-		prof.closers = append(prof.closers, func() {
+		prof.closer = func() {
 			pprof.Lookup("heap").WriteTo(f, 0)
 			f.Close()
 			runtime.MemProfileRate = old
-		})
+			if !prof.quiet {
+				log.Printf("profile: memory profiling disabled, %s", fn)
+			}
+		}
 
 	case blockMode:
 		fn := filepath.Join(path, "block.pprof")
@@ -172,11 +176,14 @@ func Start(options ...func(*profile)) interface {
 		if !prof.quiet {
 			log.Printf("profile: block profiling enabled, %s", fn)
 		}
-		prof.closers = append(prof.closers, func() {
+		prof.closer = func() {
 			pprof.Lookup("block").WriteTo(f, 0)
 			f.Close()
 			runtime.SetBlockProfileRate(0)
-		})
+			if !prof.quiet {
+				log.Printf("profile: block profiling disabled, %s", fn)
+			}
+		}
 	}
 
 	if !prof.noShutdownHook {

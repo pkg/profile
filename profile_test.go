@@ -132,6 +132,30 @@ func main() {
 		Err,
 	},
 }, {
+	name: "multiple profile sessions",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	profile.Start(profile.CPUProfile).Stop()
+	profile.Start(profile.MemProfile).Stop()
+	profile.Start(profile.BlockProfile).Stop()
+	profile.Start(profile.CPUProfile).Stop()
+}
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: cpu profiling enabled",
+			"profile: cpu profiling disabled",
+			"profile: memory profiling enabled",
+			"profile: memory profiling disabled",
+			"profile: block profiling enabled",
+			"profile: block profiling disabled"),
+		NoErr,
+	},
+}, {
 	name: "profile quiet",
 	code: `
 package main
