@@ -54,21 +54,23 @@ func NoShutdownHook(p *profile) { p.noShutdownHook = true }
 // Quiet suppresses informational messages during profiling.
 func Quiet(p *profile) { p.quiet = true }
 
-// CPUProfile controls if cpu profiling will be enabled. It disables any previous profiling settings.
+// CPUProfile enables cpu profiling.
+// It disables any previous profiling settings.
 func CPUProfile(p *profile) { p.mode = cpuMode }
 
 // DefaultMemProfileRate is the default memory profiling rate.
 // See also http://golang.org/pkg/runtime/#pkg-variables
 const DefaultMemProfileRate = 4096
 
-// MemProfile controls if memory profiling will be enabled. It disables any previous profiling settings.
+// MemProfile enables memory profiling.
+// It disables any previous profiling settings.
 func MemProfile(p *profile) {
 	p.memProfileRate = DefaultMemProfileRate
 	p.mode = memMode
 }
 
-// MemProfileRate controls if memory profiling will be enabled. Additionally, it takes a parameter which
-// allows the setting of the memory profile rate.
+// MemProfileRate enables memory profiling at the preferred rate.
+// It disables any previous profiling settings.
 func MemProfileRate(rate int) func(*profile) {
 	return func(p *profile) {
 		p.memProfileRate = rate
@@ -76,7 +78,8 @@ func MemProfileRate(rate int) func(*profile) {
 	}
 }
 
-// BlockProfile controls if block (contention) profiling will be enabled. It disables any previous profiling settings.
+// BlockProfile enables block (contention) profiling.
+// It disables any previous profiling settings.
 func BlockProfile(p *profile) { p.mode = blockMode }
 
 // ProfilePath controls the base path where various profiling
