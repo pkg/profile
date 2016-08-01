@@ -10,7 +10,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"runtime/pprof"
-	"runtime/trace"
 	"sync/atomic"
 )
 
@@ -187,12 +186,12 @@ func Start(options ...func(*profile)) interface {
 		if err != nil {
 			log.Fatalf("profile: could not create trace output file %q: %v", fn, err)
 		}
-		if err := trace.Start(f); err != nil {
+		if err := startTrace(f); err != nil {
 			log.Fatalf("profile: could not start trace: %v", err)
 		}
 		logf("profile: trace enabled, %s", fn)
 		prof.closer = func() {
-			trace.Stop()
+			stopTrace()
 			logf("profile: trace disabled, %s", fn)
 		}
 	}
