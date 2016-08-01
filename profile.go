@@ -17,6 +17,7 @@ const (
 	cpuMode = iota
 	memMode
 	blockMode
+	traceMode
 )
 
 type profile struct {
@@ -180,6 +181,21 @@ func Start(options ...func(*profile)) interface {
 			f.Close()
 			runtime.SetBlockProfileRate(0)
 			logf("profile: block profiling disabled, %s", fn)
+		}
+
+	case traceMode:
+		fn := filepath.Join(path, "trace.out")
+		f, err := os.Create(fn)
+		if err != nil {
+			log.Fatalf("profile: could not create trace output file %q: %v", fn, err)
+		}
+		if err := startTrace(f); err != nil {
+			log.Fatalf("profile: could not start trace: %v", err)
+		}
+		logf("profile: trace enabled, %s", fn)
+		prof.closer = func() {
+			stopTrace()
+			logf("profile: trace disabled, %s", fn)
 		}
 	}
 
