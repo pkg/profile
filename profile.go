@@ -45,6 +45,10 @@ type profile struct {
 	stopped uint32
 }
 
+// Config is a type matched by configuration functions such as
+// NoShutdownHook that can be passed to Start.
+type Config func(*profile)
+
 // NoShutdownHook controls whether the profiling package should
 // hook SIGINT to write profiles cleanly.
 // Programs with more sophisticated signal handling should set
@@ -108,7 +112,7 @@ var started uint32
 // Start starts a new profiling session.
 // The caller should call the Stop method on the value returned
 // to cleanly stop profiling.
-func Start(options ...func(*profile)) interface {
+func Start(options ...Config) interface {
 	Stop()
 } {
 	if !atomic.CompareAndSwapUint32(&started, 0, 1) {
