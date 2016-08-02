@@ -51,4 +51,4 @@ contributing
 
 We welcome pull requests, bug fixes and issue reports.
 
-Before proposing a change, please discuss first by raising an issue.
+Before proposing a change, please discuss it first by raising an issue.
