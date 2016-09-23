@@ -84,6 +84,9 @@ func MemProfileRate(rate int) func(*Profile) {
 // It disables any previous profiling settings.
 func BlockProfile(p *Profile) { p.mode = blockMode }
 
+// Trace profile controls if execution tracing will be enabled. It disables any previous profiling settings.
+func TraceProfile(p *Profile) { p.mode = traceMode }
+
 // ProfilePath controls the base path where various profiling
 // files are written. If blank, the base path will be generated
 // by ioutil.TempDir.
