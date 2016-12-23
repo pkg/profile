@@ -31,7 +31,7 @@ func ExampleMemProfileRate() {
 
 func ExampleProfilePath() {
 	// set the location that the profile will be written to
-	defer profile.Start(profile.ProfilePath(os.Getenv("HOME")))
+	defer profile.Start(profile.ProfilePath(os.Getenv("HOME"))).Stop()
 }
 
 func ExampleNoShutdownHook() {
