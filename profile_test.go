@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -23,11 +24,11 @@ var profileTests = []struct {
 	code: `
 package main
 
-import "github.com/pkg/profile"
+import "{PKG}"
 
 func main() {
 	defer profile.Start().Stop()
-}	
+}
 `,
 	checks: []checkFn{
 		NoStdout,
@@ -39,11 +40,11 @@ func main() {
 	code: `
 package main
 
-import "github.com/pkg/profile"
+import "{PKG}"
 
 func main() {
 	defer profile.Start(profile.MemProfile).Stop()
-}	
+}
 `,
 	checks: []checkFn{
 		NoStdout,
@@ -55,11 +56,11 @@ func main() {
 	code: `
 package main
 
-import "github.com/pkg/profile"
+import "{PKG}"
 
 func main() {
 	defer profile.Start(profile.MemProfileRate(2048)).Stop()
-}	
+}
 `,
 	checks: []checkFn{
 		NoStdout,
@@ -71,12 +72,12 @@ func main() {
 	code: `
 package main
 
-import "github.com/pkg/profile"
+import "{PKG}"
 
 func main() {
 	profile.Start()
 	profile.Start()
-}	
+}
 `,
 	checks: []checkFn{
 		NoStdout,
@@ -88,11 +89,11 @@ func main() {
 	code: `
 package main
 
-import "github.com/pkg/profile"
+import "{PKG}"
 
 func main() {
 	defer profile.Start(profile.BlockProfile).Stop()
-}	
+}
 `,
 	checks: []checkFn{
 		NoStdout,
@@ -104,11 +105,11 @@ func main() {
 	code: `
 package main
 
-import "github.com/pkg/profile"
+import "{PKG}"
 
 func main() {
 	defer profile.Start(profile.ProfilePath(".")).Stop()
-}	
+}
 `,
 	checks: []checkFn{
 		NoStdout,
@@ -120,11 +121,11 @@ func main() {
 	code: `
 package main
 
-import "github.com/pkg/profile"
+import "{PKG}"
 
 func main() {
 		defer profile.Start(profile.ProfilePath("README.md")).Stop()
-}	
+}
 `,
 	checks: []checkFn{
 		NoStdout,
@@ -136,7 +137,7 @@ func main() {
 	code: `
 package main
 
-import "github.com/pkg/profile"
+import "{PKG}"
 
 func main() {
 	profile.Start(profile.CPUProfile).Stop()
@@ -156,15 +157,40 @@ func main() {
 		NoErr,
 	},
 }, {
+	name: "multiple profiles in one session",
+	code: `
+package main
+
+import "{PKG}"
+
+func main() {
+	defer profile.Start(profile.CPUProfile, profile.MemProfile, profile.BlockProfile, profile.TraceProfile, profile.MutexProfile).Stop()
+}
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: cpu profiling enabled",
+			"profile: memory profiling enabled",
+			"profile: block profiling enabled",
+			"profile: trace enabled",
+			"profile: mutex profiling enabled",
+			"profile: cpu profiling disabled",
+			"profile: memory profiling disabled",
+			"profile: block profiling disabled",
+			"profile: trace disabled",
+			"profile: mutex profiling disabled"),
+		NoErr,
+	},
+}, {
 	name: "profile quiet",
 	code: `
 package main
 
-import "github.com/pkg/profile"
+import "{PKG}"
 
 func main() {
         defer profile.Start(profile.Quiet).Stop()
-}       
+}
 `,
 	checks: []checkFn{NoStdout, NoStderr, NoErr},
 }}
@@ -278,6 +304,8 @@ func TestValidateOutput(t *testing.T) {
 // stderr, and an error which may contain status information about the result
 // of the program.
 func runTest(t *testing.T, code string) ([]byte, []byte, error) {
+	pkgPath := reflect.TypeOf(Profile{}).PkgPath()
+	code = strings.Replace(code, "{PKG}", pkgPath, 1)
 	chk := func(err error) {
 		if err != nil {
 			t.Fatal(err)

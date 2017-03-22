@@ -29,6 +29,11 @@ func ExampleMemProfileRate() {
 	defer profile.Start(profile.MemProfileRate(2048)).Stop()
 }
 
+func ExampleMultipleProfiles() {
+	// use memory profiling with custom rate.
+	defer profile.Start(profile.MemProfileRate(2048), profile.CPUProfile).Stop()
+}
+
 func ExampleProfilePath() {
 	// set the location that the profile will be written to
 	defer profile.Start(profile.ProfilePath(os.Getenv("HOME"))).Stop()
