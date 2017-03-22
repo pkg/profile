@@ -164,7 +164,7 @@ package main
 import "{PKG}"
 
 func main() {
-	defer profile.Start(profile.CPUProfile, profile.MemProfile, profile.BlockProfile).Stop()
+	defer profile.Start(profile.CPUProfile, profile.MemProfile, profile.BlockProfile, profile.TraceProfile, profile.MutexProfile).Stop()
 }
 `,
 	checks: []checkFn{
@@ -172,9 +172,13 @@ func main() {
 		Stderr("profile: cpu profiling enabled",
 			"profile: memory profiling enabled",
 			"profile: block profiling enabled",
+			"profile: trace enabled",
+			"profile: mutex profiling enabled",
 			"profile: cpu profiling disabled",
 			"profile: memory profiling disabled",
-			"profile: block profiling disabled"),
+			"profile: block profiling disabled",
+			"profile: trace disabled",
+			"profile: mutex profiling disabled"),
 		NoErr,
 	},
 }, {

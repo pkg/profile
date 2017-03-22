@@ -18,6 +18,7 @@ const (
 	memMode
 	blockMode
 	traceMode
+	mutexMode
 )
 
 // Profile represents an active profiling session.
@@ -57,7 +58,6 @@ func NoShutdownHook(p *Profile) { p.noShutdownHook = true }
 func Quiet(p *Profile) { p.quiet = true }
 
 // CPUProfile enables cpu profiling.
-// It disables any previous profiling settings.
 func CPUProfile(p *Profile) { p.mode |= cpuMode }
 
 // DefaultMemProfileRate is the default memory profiling rate.
@@ -65,14 +65,12 @@ func CPUProfile(p *Profile) { p.mode |= cpuMode }
 const DefaultMemProfileRate = 4096
 
 // MemProfile enables memory profiling.
-// It disables any previous profiling settings.
 func MemProfile(p *Profile) {
 	p.memProfileRate = DefaultMemProfileRate
 	p.mode |= memMode
 }
 
 // MemProfileRate enables memory profiling at the preferred rate.
-// It disables any previous profiling settings.
 func MemProfileRate(rate int) func(*Profile) {
 	return func(p *Profile) {
 		p.memProfileRate = rate
@@ -81,11 +79,13 @@ func MemProfileRate(rate int) func(*Profile) {
 }
 
 // BlockProfile enables block (contention) profiling.
-// It disables any previous profiling settings.
 func BlockProfile(p *Profile) { p.mode |= blockMode }
 
-// Trace profile controls if execution tracing will be enabled. It disables any previous profiling settings.
+// Trace profile controls if execution tracing will be enabled.
 func TraceProfile(p *Profile) { p.mode |= traceMode }
+
+// MutexProfile enables mutex profiling.
+func MutexProfile(p *Profile) { p.mode |= mutexMode }
 
 // ProfilePath controls the base path where various profiling
 // files are written. If blank, the base path will be generated
@@ -210,6 +210,22 @@ func Start(options ...func(*Profile)) interface {
 		closers = append(closers, func() {
 			stopTrace()
 			logf("profile: trace disabled, %s", fn)
+		})
+	}
+
+	if prof.mode&mutexMode != 0 {
+		fn := filepath.Join(path, "mutex.pprof")
+		f, err := os.Create(fn)
+		if err != nil {
+			log.Fatalf("profile: could not create mutex output file %q: %v", fn, err)
+		}
+		setMutexProfileFraction(5)
+		logf("profile: mutex profiling enabled, %s", fn)
+		closers = append(closers, func() {
+			pprof.Lookup("mutex").WriteTo(f, 0)
+			f.Close()
+			setMutexProfileFraction(0)
+			logf("profile: mutex profiling disabled, %s", fn)
 		})
 	}
 
