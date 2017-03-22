@@ -14,7 +14,7 @@ import (
 )
 
 const (
-	cpuMode = iota
+	cpuMode = 1 << iota
 	memMode
 	blockMode
 	traceMode
@@ -58,7 +58,7 @@ func Quiet(p *Profile) { p.quiet = true }
 
 // CPUProfile enables cpu profiling.
 // It disables any previous profiling settings.
-func CPUProfile(p *Profile) { p.mode = cpuMode }
+func CPUProfile(p *Profile) { p.mode |= cpuMode }
 
 // DefaultMemProfileRate is the default memory profiling rate.
 // See also http://golang.org/pkg/runtime/#pkg-variables
@@ -68,7 +68,7 @@ const DefaultMemProfileRate = 4096
 // It disables any previous profiling settings.
 func MemProfile(p *Profile) {
 	p.memProfileRate = DefaultMemProfileRate
-	p.mode = memMode
+	p.mode |= memMode
 }
 
 // MemProfileRate enables memory profiling at the preferred rate.
@@ -76,16 +76,16 @@ func MemProfile(p *Profile) {
 func MemProfileRate(rate int) func(*Profile) {
 	return func(p *Profile) {
 		p.memProfileRate = rate
-		p.mode = memMode
+		p.mode |= memMode
 	}
 }
 
 // BlockProfile enables block (contention) profiling.
 // It disables any previous profiling settings.
-func BlockProfile(p *Profile) { p.mode = blockMode }
+func BlockProfile(p *Profile) { p.mode |= blockMode }
 
 // Trace profile controls if execution tracing will be enabled. It disables any previous profiling settings.
-func TraceProfile(p *Profile) { p.mode = traceMode }
+func TraceProfile(p *Profile) { p.mode |= traceMode }
 
 // ProfilePath controls the base path where various profiling
 // files are written. If blank, the base path will be generated
@@ -119,9 +119,17 @@ func Start(options ...func(*Profile)) interface {
 		log.Fatal("profile: Start() already called")
 	}
 
-	var prof Profile
+	var (
+		prof    Profile
+		closers []func()
+	)
+
 	for _, option := range options {
 		option(&prof)
+	}
+
+	if prof.mode == 0 {
+		prof.mode |= cpuMode
 	}
 
 	path, err := func() (string, error) {
@@ -141,8 +149,7 @@ func Start(options ...func(*Profile)) interface {
 		}
 	}
 
-	switch prof.mode {
-	case cpuMode:
+	if prof.mode&cpuMode != 0 {
 		fn := filepath.Join(path, "cpu.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
@@ -150,13 +157,14 @@ func Start(options ...func(*Profile)) interface {
 		}
 		logf("profile: cpu profiling enabled, %s", fn)
 		pprof.StartCPUProfile(f)
-		prof.closer = func() {
+		closers = append(closers, func() {
 			pprof.StopCPUProfile()
 			f.Close()
 			logf("profile: cpu profiling disabled, %s", fn)
-		}
+		})
+	}
 
-	case memMode:
+	if prof.mode&memMode != 0 {
 		fn := filepath.Join(path, "mem.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
@@ -165,14 +173,15 @@ func Start(options ...func(*Profile)) interface {
 		old := runtime.MemProfileRate
 		runtime.MemProfileRate = prof.memProfileRate
 		logf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, fn)
-		prof.closer = func() {
+		closers = append(closers, func() {
 			pprof.Lookup("heap").WriteTo(f, 0)
 			f.Close()
 			runtime.MemProfileRate = old
 			logf("profile: memory profiling disabled, %s", fn)
-		}
+		})
+	}
 
-	case blockMode:
+	if prof.mode&blockMode != 0 {
 		fn := filepath.Join(path, "block.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
@@ -180,15 +189,16 @@ func Start(options ...func(*Profile)) interface {
 		}
 		runtime.SetBlockProfileRate(1)
 		logf("profile: block profiling enabled, %s", fn)
-		prof.closer = func() {
+		closers = append(closers, func() {
 			pprof.Lookup("block").WriteTo(f, 0)
 			f.Close()
 			runtime.SetBlockProfileRate(0)
 			logf("profile: block profiling disabled, %s", fn)
-		}
+		})
+	}
 
-	case traceMode:
-		fn := filepath.Join(path, "trace.out")
+	if prof.mode&traceMode != 0 {
+		fn := filepath.Join(path, "trace.pprof")
 		f, err := os.Create(fn)
 		if err != nil {
 			log.Fatalf("profile: could not create trace output file %q: %v", fn, err)
@@ -197,9 +207,15 @@ func Start(options ...func(*Profile)) interface {
 			log.Fatalf("profile: could not start trace: %v", err)
 		}
 		logf("profile: trace enabled, %s", fn)
-		prof.closer = func() {
+		closers = append(closers, func() {
 			stopTrace()
 			logf("profile: trace disabled, %s", fn)
+		})
+	}
+
+	prof.closer = func() {
+		for _, fn := range closers {
+			fn()
 		}
 	}
 
