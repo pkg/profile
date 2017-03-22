@@ -174,6 +174,7 @@ func Start(options ...func(*Profile)) interface {
 		runtime.MemProfileRate = prof.memProfileRate
 		logf("profile: memory profiling enabled (rate %d), %s", runtime.MemProfileRate, fn)
 		closers = append(closers, func() {
+			runtime.GC() // update the mem stats
 			pprof.Lookup("heap").WriteTo(f, 0)
 			f.Close()
 			runtime.MemProfileRate = old
