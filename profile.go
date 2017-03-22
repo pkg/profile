@@ -209,6 +209,7 @@ func Start(options ...func(*Profile)) interface {
 		logf("profile: trace enabled, %s", fn)
 		closers = append(closers, func() {
 			stopTrace()
+			f.Close()
 			logf("profile: trace disabled, %s", fn)
 		})
 	}
@@ -222,7 +223,9 @@ func Start(options ...func(*Profile)) interface {
 		setMutexProfileFraction(5)
 		logf("profile: mutex profiling enabled, %s", fn)
 		closers = append(closers, func() {
-			pprof.Lookup("mutex").WriteTo(f, 0)
+			if p := pprof.Lookup("mutex"); p != nil {
+				p.WriteTo(f, 0)
+			}
 			f.Close()
 			setMutexProfileFraction(0)
 			logf("profile: mutex profiling disabled, %s", fn)
