@@ -100,6 +100,22 @@ func main() {
 		NoErr,
 	},
 }, {
+	name: "mutex profile",
+	code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start(profile.MutexProfile).Stop()
+}
+`,
+	checks: []checkFn{
+		NoStdout,
+		Stderr("profile: mutex profiling enabled"),
+		NoErr,
+	},
+}, {
 	name: "profile path",
 	code: `
 package main
@@ -143,6 +159,7 @@ func main() {
 	profile.Start(profile.MemProfile).Stop()
 	profile.Start(profile.BlockProfile).Stop()
 	profile.Start(profile.CPUProfile).Stop()
+	profile.Start(profile.MutexProfile).Stop()
 }
 `,
 	checks: []checkFn{
@@ -152,7 +169,11 @@ func main() {
 			"profile: memory profiling enabled",
 			"profile: memory profiling disabled",
 			"profile: block profiling enabled",
-			"profile: block profiling disabled"),
+			"profile: block profiling disabled",
+			"profile: cpu profiling enabled",
+			"profile: cpu profiling disabled",
+			"profile: mutex profiling enabled",
+			"profile: mutex profiling disabled"),
 		NoErr,
 	},
 }, {
