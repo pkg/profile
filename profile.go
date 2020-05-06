@@ -88,15 +88,20 @@ func MemProfileRate(rate int) func(*Profile) {
 	}
 }
 
-// MemProfileType changes which type of memory profiling to
-// enable. The only two memory types supported are alloc and heap. It
-// disables any previous profiling settings.
-func MemProfileType(memProfileType string) func(*Profile) {
-	if memProfileType != "heap" && memProfileType != "allocs" {
-		panic("Unexpected memory profile type, expected heap or alloc")
-	}
+// MemProfileHeap changes which type of memory profiling to profile
+// the heap.
+func MemProfileHeap() func(*Profile) {
 	return func(p *Profile) {
-		p.memProfileType = memProfileType
+		p.memProfileType = "heap"
+		p.mode = memMode
+	}
+}
+
+// MemProfileAllocs changes which type of memory to profile
+// allocations.
+func MemProfileAllocs() func(*Profile) {
+	return func(p *Profile) {
+		p.memProfileType = "allocs"
 		p.mode = memMode
 	}
 }
