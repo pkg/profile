@@ -144,12 +144,14 @@ func (p *Profile) Stop() {
 // started is non zero if a profile is running.
 var started uint32
 
+type Stopper interface {
+	Stop()
+}
+
 // Start starts a new profiling session.
 // The caller should call the Stop method on the value returned
 // to cleanly stop profiling.
-func Start(options ...func(*Profile)) interface {
-	Stop()
-} {
+func Start(options ...func(*Profile)) Stopper {
 	if !atomic.CompareAndSwapUint32(&started, 0, 1) {
 		log.Fatal("profile: Start() already called")
 	}
