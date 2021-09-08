@@ -3,7 +3,7 @@ profile
 
 Simple profiling support package for Go
 
-![Build Status](https://github.com/kmzfs/pkg/profile/workflows/go.yml/badge.svg?branch=master)
+![Build Status](https://github.com/pkg/profile/actions/workflows/go.yml/badge.svg?branch=master)
 [![GoDoc](http://godoc.org/github.com/pkg/profile?status.svg)](http://godoc.org/github.com/pkg/profile)
 
 
