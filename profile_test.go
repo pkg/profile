@@ -123,6 +123,22 @@ func main() {
 			NoErr,
 		},
 	}, {
+		name: "clock profile",
+		code: `
+package main
+
+import "github.com/pkg/profile"
+
+func main() {
+	defer profile.Start(profile.ClockProfile).Stop()
+}
+`,
+		checks: []checkFn{
+			NoStdout,
+			Stderr("profile: clock profiling enabled"),
+			NoErr,
+		},
+	}, {
 		name: "profile path",
 		code: `
 package main
