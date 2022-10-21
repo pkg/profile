@@ -3,7 +3,8 @@ profile
 
 Simple profiling support package for Go
 
-[![Build Status](https://travis-ci.org/pkg/profile.svg?branch=master)](https://travis-ci.org/pkg/profile) [![GoDoc](http://godoc.org/github.com/pkg/profile?status.svg)](http://godoc.org/github.com/pkg/profile)
+![Build Status](https://github.com/pkg/profile/actions/workflows/go.yml/badge.svg?branch=master)
+[![GoDoc](http://godoc.org/github.com/pkg/profile?status.svg)](http://godoc.org/github.com/pkg/profile)
 
 
 installation
