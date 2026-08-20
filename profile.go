@@ -50,7 +50,7 @@ type Profile struct {
 	// profiles. Allowed values are `heap` and `allocs`.
 	memProfileType string
 
-	// closer holds a cleanup function that run after each profile
+	// closer holds a cleanup function that runs after each profile
 	closer func()
 
 	// stopped records if a call to profile.Stop has been made
@@ -113,11 +113,11 @@ func MutexProfile(p *Profile) { p.mode = mutexMode }
 // It disables any previous profiling settings.
 func BlockProfile(p *Profile) { p.mode = blockMode }
 
-// Trace profile enables execution tracing.
+// TraceProfile enables execution tracing.
 // It disables any previous profiling settings.
 func TraceProfile(p *Profile) { p.mode = traceMode }
 
-// ThreadcreationProfile enables thread creation profiling..
+// ThreadcreationProfile enables thread creation profiling.
 // It disables any previous profiling settings.
 func ThreadcreationProfile(p *Profile) { p.mode = threadCreateMode }
 
